@@ -7,7 +7,7 @@ pub mod utility;
 
 use amane::{
     Color, Horizontal, InputArea, Key, Keyboard, Layer, LayerWindow, Margin, Monitor, Rectangle,
-    Service, Vertical, Zone,
+    Service, Stack, Vertical, Zone, children,
 };
 
 use crate::bar;
@@ -63,7 +63,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     }
 
     let Some(first) = panels.first() else {
-        return empty();
+        return empty(screen);
     };
 
     /*
@@ -139,7 +139,19 @@ fn input_area(region: Region, window: Region) -> InputArea {
     }
 }
 
-fn empty() -> LayerWindow {
+/*
+ * the 1 pixel still draws the liquid invisibly and one nearly clear pixel:
+ * the first draw builds the shader and the vector renderer on the gpu, and
+ * that took long enough to swallow the first panel's opening
+ */
+fn empty(screen: Region) -> LayerWindow {
+    let placement = Placement {
+        x: 0.0,
+        y: 0.0,
+        screen_width: screen.width,
+        screen_height: screen.height,
+    };
+
     LayerWindow::new()
         .width(1.0)
         .height(1.0)
@@ -148,5 +160,8 @@ fn empty() -> LayerWindow {
         .layer(Layer::Top)
         .space(Zone::Respect)
         .click_through()
-        .child(Rectangle::new().width(1.0).height(1.0).fill(Color::TRANSPARENT))
+        .child(Stack::new(children![
+            liquid::view(Color::TRANSPARENT, Vec::new(), placement),
+            Rectangle::new().width(1.0).height(1.0).fill(Color::rgba(0, 0, 0, 1)),
+        ]))
 }
