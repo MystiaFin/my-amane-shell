@@ -1,4 +1,4 @@
-// jaqc's sdf-liquid: the window's edges and up to 8 rounded rectangles, melted together
+// the window's edges and up to 8 rounded rectangles, melted together
 
 // how far point is outside the rounded rectangle, negative inside
 fn rounded_rectangle(point: vec2<f32>, rect: vec4<f32>, radius: f32) -> f32 {

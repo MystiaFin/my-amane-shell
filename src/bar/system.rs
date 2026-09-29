@@ -7,19 +7,18 @@ use super::{pill, ring};
 use crate::fonts;
 use crate::theme::Theme;
 
-// jaqc's Icons.memory, and its notification, wifi and bluetooth tray icons
+// the memory icon, and the notification, wifi and bluetooth tray icons
 const MEMORY_ICON: &str = "󰍛";
 const TRAY_ICONS: [&str; 3] = ["󰂚", "󰖩", "󰂯"];
 
-// jaqc's resource rings are 24px with a 3px line
 const RING_SIZE: f32 = 24.0;
 const RING_THICKNESS: f32 = 3.0;
 
-// measured from jaqc's bar: the tray pill is 70px, 50px of icons and 10px padding each side
+// 50px of icons with 10px of padding on each side
 const TRAY_WIDTH: f32 = 70.0;
 const TRAY_PADDING: f32 = 10.0;
 
-// with the row's 10px gap this makes jaqc's 15px from the screen edge
+// with the row's 10px gap this keeps 15px from the screen edge
 const EDGE: f32 = 5.0;
 
 pub fn view(theme: &Theme, width: f32) -> Row {
@@ -43,7 +42,7 @@ pub fn view(theme: &Theme, width: f32) -> Row {
         .align(Center)
 }
 
-// jaqc's StatusResourceIndicator: a ring with a small icon inside, then the value
+// a ring with a small icon inside, then the value
 fn indicator(value: f32, color: Color, icon: &str, text: &str, theme: &Theme) -> Row {
     let ring = ring::view(RING_SIZE, RING_THICKNESS, value, color, theme.border);
 
@@ -87,7 +86,7 @@ fn battery(theme: &Theme) -> Option<Row> {
     Some(indicator(value, color, icon, &text, theme))
 }
 
-// jaqc's BatteryService.icon, one glyph per 10%
+// one glyph per 10%
 fn battery_icon(percent: u8, charging: bool) -> &'static str {
     if charging {
         return "󰚥";
@@ -120,7 +119,7 @@ fn memory(theme: &Theme) -> Row {
         theme.danger
     };
 
-    // jaqc shows the used amount, like "5.2G"
+    // the used amount, like "5.2G"
     let gibibytes = memory.used_kib() as f32 / 1024.0 / 1024.0;
 
     let text = format!("{gibibytes:.1}G");
@@ -128,7 +127,7 @@ fn memory(theme: &Theme) -> Row {
     indicator(usage, color, MEMORY_ICON, &text, theme)
 }
 
-// opens the utility center in jaqc; here it only shows the icons for now
+// only shows the icons until the utility center exists
 fn tray(theme: &Theme) -> Rectangle {
     let mut icons: Vec<Box<dyn Widget>> = Vec::new();
 

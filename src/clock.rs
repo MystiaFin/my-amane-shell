@@ -60,7 +60,7 @@ impl Service for Clock {
 }
 
 impl Clock {
-    // jaqc's 12 hour pattern "hh:mm AP", like "09:05 PM"
+    // 12 hour time, like "09:05 PM"
     pub fn time(&self) -> String {
         let today = self.local.rem_euclid(SECONDS_PER_DAY);
 
@@ -78,7 +78,7 @@ impl Clock {
         format!("{hours:02}:{minutes:02} {period}")
     }
 
-    // jaqc's "dddd, dd MMM yyyy", like "Tuesday, 29 Sep 2026"
+    // like "Tuesday, 29 Sep 2026"
     pub fn date(&self) -> String {
         let days = self.local.div_euclid(SECONDS_PER_DAY);
 

@@ -5,11 +5,10 @@ use amane::{Color, Parent, Rectangle, Stack, Widget};
 // the shader has room for this many blobs
 const MAX_BLOBS: usize = 8;
 
-// jaqc's defaults: edgeOffset 2 and connectionRadius 36
 const EDGE_OFFSET: f32 = 2.0;
 const CONNECTION: f32 = 36.0;
 
-// one of jaqc's edge panels: a rounded rectangle of liquid with content on it
+// a rounded rectangle of liquid with content on it, like a panel growing out of an edge
 pub struct Blob {
     x: f32,
     y: f32,
@@ -46,7 +45,7 @@ impl Blob {
 }
 
 /*
- * jaqc's SdfLiquidSurface: the shader draws every blob melted into the
+ * the shader draws every blob melted into the
  * others and into the window's edges, then each blob's content is laid on top
  */
 pub fn view(color: Color, blobs: Vec<Blob>) -> Stack {

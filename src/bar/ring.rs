@@ -1,6 +1,6 @@
 use amane::{Arc, Canvas, Cap, Color, Shape, shapes};
 
-// jaqc's StatusRing: a thin track with the value drawn over it, from the top clockwise
+// a thin track with the value drawn over it, from the top clockwise
 pub fn view(size: f32, thickness: f32, value: f32, color: Color, track: Color) -> Canvas {
     let middle = size / 2.0;
 

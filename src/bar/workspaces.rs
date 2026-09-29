@@ -7,17 +7,17 @@ use super::{motion, star};
 use crate::fonts;
 use crate::theme::Theme;
 
-// jaqc's Icons.nixos and inactiveWorkspace, the active star is drawn in star.rs
+// the logo and the inactive dot, the active star is drawn in star.rs
 const LOGO: &str = "\u{f1105}";
 const INACTIVE: &str = "\u{f444}";
 
-// jaqc's pill style: every workspace is a 26px slot, 4px apart, inside a 32px pill
+// every workspace is a 26px slot, 4px apart, inside a 32px pill
 const SLOT: f32 = 26.0;
 const SLOT_GAP: f32 = 4.0;
 const STRIP_HEIGHT: f32 = 32.0;
 const STRIP_PADDING: f32 = 4.0;
 
-// with the row's 10px gap this makes jaqc's 20px from the screen edge
+// with the row's 10px gap this keeps 20px from the screen edge
 const EDGE: f32 = 10.0;
 
 pub fn view(monitor: &Monitor, theme: &Theme, width: f32) -> Row {
@@ -103,7 +103,7 @@ fn strip(monitor: &Monitor, workspaces: &[&Workspace], theme: &Theme) -> Rectang
         .child(layers)
 }
 
-// a dot, drawn at 18px scaled to 0.6 like jaqc; the highlight covers the active one
+// a small dot, the highlight covers the active one
 fn slot(workspace: &Workspace, theme: &Theme) -> Rectangle {
     let id = workspace.id();
 
@@ -124,7 +124,7 @@ fn slot(workspace: &Workspace, theme: &Theme) -> Rectangle {
         .child(Text::new(INACTIVE).size(11.0).font(fonts::SYMBOLS).color(color))
 }
 
-// the workspace's own name, or "Workspace 2" when it has none, like jaqc
+// the workspace's own name, or "Workspace 2" when it has none
 fn active_name(workspaces: &[&Workspace]) -> String {
     for workspace in workspaces {
         if !workspace.active() {

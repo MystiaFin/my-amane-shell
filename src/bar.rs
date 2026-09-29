@@ -10,7 +10,6 @@ use amane::{Full, Layer, LayerWindow, Monitor, Parent, Rectangle, Row, Vertical,
 
 use crate::theme;
 
-// jaqc's default statusBarHeight
 pub const HEIGHT: f32 = 40.0;
 
 // the height of every pill and ring row inside the bar

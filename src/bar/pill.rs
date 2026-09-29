@@ -13,7 +13,7 @@ pub fn text_width(text: &str, size: f32) -> f32 {
     characters * size * 0.62
 }
 
-// a rounded capsule, jaqc sizes each one as its content plus some padding
+// a rounded capsule, sized as its content plus some padding
 pub fn view(width: f32, fill: Color) -> Rectangle {
     Rectangle::new()
         .width(width)
@@ -22,7 +22,7 @@ pub fn view(width: f32, fill: Color) -> Rectangle {
         .fill(fill)
 }
 
-// jaqc's BarText: Poppins, light weight
+// the bar's text style: Poppins, light weight
 pub fn label(text: &str, size: f32, color: Color) -> Text {
     Text::new(text)
         .size(size)

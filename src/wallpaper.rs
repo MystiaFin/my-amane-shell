@@ -3,10 +3,9 @@ use std::fs;
 
 use amane::{Palette, Service};
 
-// jaqc's wallpaper picker writes the chosen file here, so both shells follow the same wallpaper
+// the wallpaper picker writes the chosen file here
 const SELECTION: &str = ".config/quickshell/wallpaper-selection";
 
-// jaqc's quantizer depth 4 gives 16 colors
 const PALETTE_SIZE: usize = 16;
 
 // the path of the current wallpaper, re-read whenever the selection file changes

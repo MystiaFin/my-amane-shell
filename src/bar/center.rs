@@ -8,13 +8,11 @@ use crate::clock::Clock;
 use crate::fonts;
 use crate::theme::Theme;
 
-// jaqc's Icons.media
 const MEDIA_ICON: &str = "󰎈";
 
-// jaqc cuts the song text off at 180px
+// longer song text is cut off
 const MEDIA_TEXT_WIDTH: f32 = 180.0;
 
-// jaqc's rings are 18px; with its 4px line
 const RING_SIZE: f32 = 18.0;
 const RING_THICKNESS: f32 = 4.0;
 
@@ -77,7 +75,7 @@ fn audio(theme: &Theme) -> Rectangle {
             theme.border,
         ));
 
-    // two rings 8px apart, plus jaqc's 16px of padding
+    // two rings 8px apart, plus 16px of padding
     let width = RING_SIZE * 2.0 + 8.0 + 16.0;
 
     pill::view(width, theme.surface)
@@ -85,7 +83,7 @@ fn audio(theme: &Theme) -> Rectangle {
         .child(Row::new(children![speaker, microphone]).gap(8.0).align(Center))
 }
 
-// "artist - title", or "No media" while nothing plays, like jaqc
+// "artist - title", or "No media" while nothing plays
 fn media(theme: &Theme) -> Rectangle {
     let media = Media::read();
 
@@ -110,7 +108,7 @@ fn media(theme: &Theme) -> Rectangle {
         .align_child(amane::Start, Center)
         .child(pill::label(&text, 13.0, theme.text).elide());
 
-    // the icon is about 9px wide, then jaqc's 7px gap and 20px of padding
+    // the icon is about 9px wide, then a 7px gap and 20px of padding
     let width = 9.0 + 7.0 + text_width + 20.0;
 
     pill::view(width, theme.surface)

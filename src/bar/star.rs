@@ -1,13 +1,13 @@
 use amane::{Canvas, Color, Path, Shape, shapes};
 
-// how far the tips reach from the middle, jaqc's 18px glyph is about 15px across
+// how far the tips reach from the middle
 const TIP: f32 = 7.5;
 
 // how close the curved sides pull in toward the middle
 const WAIST: f32 = 1.2;
 
 /*
- * jaqc's four pointed star, drawn as a shape instead of a font glyph:
+ * a four pointed star, drawn as a shape instead of a font glyph:
  * a glyph is never exactly centered in its box, so turning it
  * swings it off center, while a shape turns around its true middle
  */

@@ -4,10 +4,10 @@ use amane::{Color, Palette, Service};
 
 use hsl::Hsl;
 
-// jaqc never lets a tone get more saturated than this
+// no tone gets more saturated than this
 const MAX_SATURATION: f32 = 0.82;
 
-// jaqc's semantic seeds, pulled a little toward the accent
+// green and red to start from, pulled a little toward the accent
 const SUCCESS_SEED: Color = Color::rgb(0xa6, 0xe3, 0xa1);
 const DANGER_SEED: Color = Color::rgb(0xf3, 0x8b, 0xa8);
 
@@ -29,7 +29,7 @@ pub struct Theme {
     pub danger: Color,
 }
 
-// jaqc's dynamic palette: every color is the wallpaper's darkest or most vivid color, re-lit
+// every color is the wallpaper's darkest or most vivid color, re-lit
 pub fn current() -> Theme {
     let palette = Palette::read();
 
@@ -119,7 +119,7 @@ pub fn mix(first: Color, second: Color, amount: f32) -> Color {
     )
 }
 
-// the same relative luminance jaqc uses to choose text on the accent
+// relative luminance, to choose dark or light text on the accent
 fn luminance(color: Color) -> f32 {
     let linear = |channel: u8| {
         let value = f32::from(channel) / 255.0;

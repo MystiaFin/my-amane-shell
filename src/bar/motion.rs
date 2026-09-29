@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use amane::{Animation, Easing};
 
-// jaqc's statusBarDuration
 const DURATION: Duration = Duration::from_millis(420);
 
 // where the active workspace highlight is, and how far its star has turned
@@ -38,7 +37,7 @@ pub fn highlight(monitor: &str, active: usize, step: f32) -> (f32, f32) {
         });
 
         if active != motion.active {
-            // jaqc turns the star half a turn, the way the highlight moves
+            // the star turns half a turn, the way the highlight moves
             let direction = if active > motion.active { 1.0 } else { -1.0 };
 
             motion.turned += direction * 180.0;
