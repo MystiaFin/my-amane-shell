@@ -14,6 +14,9 @@ struct Motion {
     position: Animation,
 
     rotation: Animation,
+
+    // where the star is turning to, counted apart so a switch mid-turn still lands straight
+    turned: f32,
 }
 
 thread_local! {
@@ -31,16 +34,17 @@ pub fn highlight(monitor: &str, active: usize, step: f32) -> (f32, f32) {
             active,
             position: animation(active as f32 * step),
             rotation: animation(0.0),
+            turned: 0.0,
         });
 
         if active != motion.active {
             // jaqc turns the star half a turn, the way the highlight moves
             let direction = if active > motion.active { 1.0 } else { -1.0 };
 
-            let rotation = motion.rotation.value() + direction * 180.0;
+            motion.turned += direction * 180.0;
 
             motion.position.to(active as f32 * step);
-            motion.rotation.to(rotation);
+            motion.rotation.to(motion.turned);
 
             motion.active = active;
         }
