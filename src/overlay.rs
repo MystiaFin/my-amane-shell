@@ -1,11 +1,12 @@
+pub mod launcher;
 mod panel;
 pub mod power_menu;
 mod region;
 mod state;
 
 use amane::{
-    Color, Horizontal, InputArea, Layer, LayerWindow, Margin, Monitor, Rectangle, Service,
-    Vertical, Zone,
+    Color, Horizontal, InputArea, Keyboard, Layer, LayerWindow, Margin, Monitor, Rectangle,
+    Service, Vertical, Zone,
 };
 
 use crate::bar;
@@ -38,9 +39,21 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
 
     let overlay = Overlay::read();
 
+    // the area below the bar, which a window that respects the bar is placed in
+    let screen = Region {
+        x: 0.0,
+        y: 0.0,
+        width: monitor.width as f32,
+        height: monitor.height as f32 - bar::HEIGHT,
+    };
+
     let mut panels: Vec<PanelView> = Vec::new();
 
     if let Some(panel) = power_menu::view(&overlay, &theme) {
+        panels.push(panel);
+    }
+
+    if let Some(panel) = launcher::view(&overlay, &theme, screen) {
         panels.push(panel);
     }
 
@@ -48,12 +61,11 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         return empty();
     };
 
-    // the area below the bar, which a window that respects the bar is placed in
-    let screen = Region {
-        x: 0.0,
-        y: 0.0,
-        width: monitor.width as f32,
-        height: monitor.height as f32 - bar::HEIGHT,
+    // the launcher is typed into, so it takes the keyboard while it is open
+    let keyboard = if overlay.launcher.shown {
+        Keyboard::Exclusive
+    } else {
+        Keyboard::None
     };
 
     let mut reach = first.reach;
@@ -95,6 +107,8 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .margin(margin)
         .layer(Layer::Top)
         .space(Zone::Respect)
+        .keyboard(keyboard)
+        .on_key(launcher::key_pressed)
         .input_region(areas)
         .child(liquid::view(theme.background, blobs, placement))
 }

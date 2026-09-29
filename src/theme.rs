@@ -15,6 +15,7 @@ const DANGER_SEED: Color = Color::rgb(0xf3, 0x8b, 0xa8);
 pub struct Theme {
     pub background: Color,
     pub surface: Color,
+    pub hover_surface: Color,
     pub selected_surface: Color,
     pub border: Color,
 
@@ -53,6 +54,7 @@ pub fn current() -> Theme {
     let muted_text = tone(base, pick(light, 0.42, 0.52), 0.16);
 
     let border = mix(surface, accent, pick(light, 0.26, 0.32));
+    let hover_surface = mix(surface, accent, pick(light, 0.12, 0.20));
     let selected_surface = mix(surface, accent, pick(light, 0.20, 0.15));
 
     let success = tone(mix(SUCCESS_SEED, accent, 0.20), pick(light, 0.42, 0.70), 0.48);
@@ -74,6 +76,7 @@ pub fn current() -> Theme {
     Theme {
         background,
         surface,
+        hover_surface,
         selected_surface,
         border,
         text,
