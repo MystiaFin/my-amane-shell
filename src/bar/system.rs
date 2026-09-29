@@ -1,6 +1,6 @@
 use amane::{
-    Battery, Center, Color, End, Memory, Parent, Rectangle, Row, Service, SpaceBetween, Text,
-    Widget, children,
+    Battery, Center, Color, End, Memory, Parent, Rectangle, Row, Service, SpaceBetween, Stack,
+    Text, Widget, children,
 };
 
 use super::{pill, ring};
@@ -53,11 +53,7 @@ fn indicator(value: f32, color: Color, icon: &str, text: &str, theme: &Theme) ->
         .align_child(Center, Center)
         .child(Text::new(icon).size(10.0).font(fonts::MATERIAL).color(theme.text));
 
-    /*
-     * amane has no stack widget yet, so a gap of minus the ring's width
-     * puts the icon back over the ring
-     */
-    let ring_with_icon = Row::new(children![ring, icon]).gap(-RING_SIZE);
+    let ring_with_icon = Stack::new(children![ring, icon]);
 
     Row::new(children![ring_with_icon, pill::label(text, 14.0, theme.text)])
         .gap(6.0)

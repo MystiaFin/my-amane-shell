@@ -1,6 +1,7 @@
 mod bar;
 mod clock;
 mod fonts;
+mod liquid;
 mod theme;
 mod wallpaper;
 

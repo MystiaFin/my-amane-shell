@@ -1,6 +1,6 @@
 use amane::{
-    Center, Color, Full, Monitor, Parent, Pointer, Rectangle, Row, Service, Start, Text, Weight,
-    Widget, Workspace, Workspaces, children,
+    Center, Color, Full, Monitor, Parent, Pointer, Rectangle, Row, Service, Stack, Start, Text,
+    Weight, Widget, Workspace, Workspaces, children,
 };
 
 use super::{motion, star};
@@ -88,21 +88,11 @@ fn strip(monitor: &Monitor, workspaces: &[&Workspace], theme: &Theme) -> Rectang
         .height(SLOT)
         .radius(Full)
         .fill(theme.accent)
+        .translate(offset, 0.0)
         .child(star::view(SLOT, rotation, theme.on_accent));
 
-    // as wide as the dots at every offset, so centering the strip never moves them
-    let sliding = Row::new(children![Rectangle::new().width(offset).height(1.0), highlight])
-        .width(content)
-        .justify(Start)
-        .align(Center);
-
-    /*
-     * amane has no stack widget yet, so a gap of minus the dots'
-     * width puts the highlight back over them
-     */
-    let layers = Row::new(children![Row::new(slots).gap(SLOT_GAP).align(Center), sliding])
-        .gap(-content)
-        .align(Center);
+    // the highlight slides over the dots, which stay where they are
+    let layers = Stack::new(children![Row::new(slots).gap(SLOT_GAP).align(Center), highlight]);
 
     Rectangle::new()
         .width(content + STRIP_PADDING * 2.0)
