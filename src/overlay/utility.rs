@@ -1,3 +1,4 @@
+mod calendar;
 mod header;
 mod switch;
 mod tabs;
@@ -91,11 +92,14 @@ pub fn view(overlay: &Overlay, theme: &Theme, screen: Region) -> Option<PanelVie
 }
 
 fn content(overlay: &Overlay, theme: &Theme, height: f32) -> Rectangle {
-    let pages_height = height - PADDING.top - PADDING.bottom - tabs::HEIGHT - GAP;
+    let fixed = tabs::HEIGHT + calendar::HEIGHT + GAP * 2.0;
+
+    let pages_height = height - PADDING.top - PADDING.bottom - fixed;
 
     let column = Column::new(children![
         tabs::view(overlay, theme, INNER_WIDTH),
         pages(overlay, theme, pages_height),
+        calendar::view(overlay, theme, INNER_WIDTH),
     ])
     .gap(GAP);
 
@@ -138,11 +142,17 @@ fn pages(overlay: &Overlay, theme: &Theme, height: f32) -> Rectangle {
         layers.push(Box::new(slot));
     }
 
-    Rectangle::new()
+    let viewport = Rectangle::new()
         .width(INNER_WIDTH)
         .height(height)
-        .clip()
-        .child(Stack::new(layers))
+        .child(Stack::new(layers));
+
+    // a clip is a gpu layer, so only while a page slides past the edge
+    if shown != overlay.page.index() {
+        return viewport.clip();
+    }
+
+    viewport
 }
 
 // what opening the panel or turning to a page starts, like a fresh wifi scan

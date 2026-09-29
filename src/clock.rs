@@ -91,6 +91,13 @@ impl Clock {
 
         format!("{weekday}, {day:02} {month} {year}")
     }
+
+    // year, month from 1 and day from 1
+    pub fn today(&self) -> (i64, i64, i64) {
+        let days = self.local.div_euclid(SECONDS_PER_DAY);
+
+        civil_date(days)
+    }
 }
 
 /*
@@ -98,7 +105,7 @@ impl Clock {
  * hinnant's method: count in 400 year cycles of 146097 days,
  * with years starting in march so the leap day falls at the end
  */
-fn civil_date(days: i64) -> (i64, i64, i64) {
+pub fn civil_date(days: i64) -> (i64, i64, i64) {
     let shifted = days + 719_468;
 
     let era = shifted.div_euclid(146_097);
@@ -122,6 +129,22 @@ fn civil_date(days: i64) -> (i64, i64, i64) {
     let year = year_of_era + era * 400 + i64::from(month <= 2);
 
     (year, month, day)
+}
+
+// the other way round: days since 1970 for a year, month and day
+pub fn days_since_1970(year: i64, month: i64, day: i64) -> i64 {
+    let year = year - i64::from(month <= 2);
+
+    let era = year.div_euclid(400);
+    let year_of_era = year.rem_euclid(400);
+
+    let month_from_march = (month + 9) % 12;
+
+    let day_of_year = (153 * month_from_march + 2) / 5 + day - 1;
+
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+
+    era * 146_097 + day_of_era - 719_468
 }
 
 // `date +%z` prints the offset like "+0700" or "-0330"

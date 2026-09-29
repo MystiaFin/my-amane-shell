@@ -45,6 +45,9 @@ pub struct Overlay {
     pub password_for: Option<String>,
     pub show_password: bool,
 
+    // the month the calendar shows, counted from this month
+    pub calendar_month: i64,
+
     // the network last asked to join, shown as connecting until it is up
     pub joining: Option<String>,
 }
@@ -75,6 +78,7 @@ impl Service for Overlay {
             password_for: None,
             show_password: false,
             joining: None,
+            calendar_month: 0,
         }
     }
 
