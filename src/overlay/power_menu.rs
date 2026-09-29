@@ -1,11 +1,11 @@
 use amane::{
-    Button, Center, Color, Column, InputArea, Padding, Pointer, Rectangle, Row, Service, Stack,
-    Start, Text, Weight, Widget, children,
+    Button, Center, Color, Column, Padding, Pointer, Rectangle, Row, Service, Stack, Start, Text,
+    Weight, Widget, children,
 };
 
-use super::Overlay;
+use super::{Overlay, PanelView, Region};
 use crate::fonts;
-use crate::liquid::Blob;
+use crate::liquid::{self, Blob};
 use crate::theme::Theme;
 
 const WIDTH: f32 = 250.0;
@@ -76,8 +76,8 @@ const ACTIONS: [Action; ACTION_COUNT] = [
     },
 ];
 
-// none while fully hidden; otherwise the liquid blob and the area that takes input
-pub fn blob(overlay: &Overlay, theme: &Theme) -> Option<(Blob, InputArea)> {
+// none while fully hidden
+pub fn view(overlay: &Overlay, theme: &Theme) -> Option<PanelView> {
     let progress = overlay.power_menu.progress.value();
 
     if progress <= 0.001 {
@@ -92,18 +92,22 @@ pub fn blob(overlay: &Overlay, theme: &Theme) -> Option<(Blob, InputArea)> {
         .radius(RADIUS)
         .child(content(overlay, theme));
 
-    // only the part on screen can be pointed at
-    let right = x + WIDTH;
-    let bottom = TOP + HEIGHT;
-
-    let area = InputArea {
-        x: 0,
-        y: 0,
-        width: right.max(0.0) as i32,
-        height: bottom.max(0.0) as i32,
+    let input = Region {
+        x,
+        y: TOP,
+        width: WIDTH,
+        height: HEIGHT,
     };
 
-    Some((blob, area))
+    // fully out it ends at its resting edge, and its melted corners spread a little past that
+    let reach = Region {
+        x: 0.0,
+        y: 0.0,
+        width: -EDGE_OVERLAP + WIDTH + liquid::CONNECTION,
+        height: TOP + HEIGHT + liquid::CONNECTION,
+    };
+
+    Some(PanelView { blob, input, reach })
 }
 
 fn content(overlay: &Overlay, theme: &Theme) -> Rectangle {

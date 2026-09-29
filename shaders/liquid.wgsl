@@ -1,4 +1,4 @@
-// the window's edges and up to 8 rounded rectangles, melted together
+// the screen's edges and up to 8 rounded rectangles, melted together
 
 // how far point is outside the rounded rectangle, negative inside
 fn rounded_rectangle(point: vec2<f32>, rect: vec4<f32>, radius: f32) -> f32 {
@@ -27,7 +27,8 @@ fn smooth_union(first: f32, second: f32, radius: f32) -> f32 {
 /*
  * values, one row of four each, as liquid.rs writes them:
  * 0 the color, 1 edge offset, connection radius and blob count,
- * 2 to 9 the blobs as x, y, width, height, 10 and 11 their radii
+ * 2 to 9 the blobs as x, y, width, height, 10 and 11 their radii,
+ * 12 where the window sits on the screen and the screen's size
  */
 @fragment
 fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
@@ -39,8 +40,16 @@ fn main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
 
     let point = uv * size;
 
-    // the edges sit just outside the window, so a blob only joins them once it comes near
-    let edge = min(min(point.x, size.x - point.x), min(point.y, size.y - point.y));
+    let window = values[12].xy;
+    let screen = values[12].zw;
+
+    // the edges sit just outside the screen, so a blob only joins them once it comes near
+    let on_screen = point + window;
+
+    let horizontal = min(on_screen.x, screen.x - on_screen.x);
+    let vertical = min(on_screen.y, screen.y - on_screen.y);
+
+    let edge = min(horizontal, vertical);
 
     var distance = edge + edge_offset;
 

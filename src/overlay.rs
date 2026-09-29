@@ -1,38 +1,122 @@
 mod panel;
 pub mod power_menu;
+mod region;
 mod state;
 
-use amane::{Full, InputArea, Layer, LayerWindow, Monitor, Service, Zone};
+use amane::{
+    Color, Horizontal, InputArea, Layer, LayerWindow, Margin, Monitor, Rectangle, Service,
+    Vertical, Zone,
+};
 
-use crate::liquid::{self, Blob};
+use crate::bar;
+use crate::liquid::{self, Blob, Placement};
 use crate::theme;
 
+pub use region::Region;
 pub use state::Overlay;
 
+// what a panel hands the overlay while it is out, all in screen coordinates
+pub struct PanelView {
+    pub blob: Blob,
+
+    // where it is right now, which is where it takes the pointer
+    pub input: Region,
+
+    // everything it can cover once fully out, melted edges included
+    pub reach: Region,
+}
+
 /*
- * one window over the whole screen that every panel grows out of;
- * it only takes input where a panel is, so the desktop below still works.
- * it stays mapped even with every panel away: mapping a window takes a
- * round trip with the compositor, long enough to miss a panel's opening
+ * the window only covers what the open panels can reach: every pixel of
+ * it runs the liquid shader each frame, and a full screen of them is
+ * more than the gpu manages within one refresh.
+ * it stays mapped, 1 pixel big, with every panel away, because mapping a
+ * window takes a round trip with the compositor, long enough to miss an opening
  */
-pub fn view(_: &Monitor) -> LayerWindow {
+pub fn view(monitor: &Monitor) -> LayerWindow {
     let theme = theme::current();
 
     let overlay = Overlay::read();
 
-    let mut blobs: Vec<Blob> = Vec::new();
-    let mut areas: Vec<InputArea> = Vec::new();
+    let mut panels: Vec<PanelView> = Vec::new();
 
-    if let Some((blob, area)) = power_menu::blob(&overlay, &theme) {
-        blobs.push(blob);
-        areas.push(area);
+    if let Some(panel) = power_menu::view(&overlay, &theme) {
+        panels.push(panel);
     }
 
+    let Some(first) = panels.first() else {
+        return empty();
+    };
+
+    // the area below the bar, which a window that respects the bar is placed in
+    let screen = Region {
+        x: 0.0,
+        y: 0.0,
+        width: monitor.width as f32,
+        height: monitor.height as f32 - bar::HEIGHT,
+    };
+
+    let mut reach = first.reach;
+
+    for panel in &panels {
+        reach = reach.join(panel.reach);
+    }
+
+    let reach = reach.within(screen);
+
+    let mut blobs = Vec::new();
+    let mut areas = Vec::new();
+
+    for panel in panels {
+        areas.push(input_area(panel.input.within(reach), reach));
+
+        blobs.push(panel.blob);
+    }
+
+    let placement = Placement {
+        x: reach.x,
+        y: reach.y,
+        screen_width: screen.width,
+        screen_height: screen.height,
+    };
+
+    let margin = Margin {
+        top: reach.y as i32,
+        right: 0,
+        bottom: 0,
+        left: reach.x as i32,
+    };
+
     LayerWindow::new()
-        .width(Full)
-        .height(Full)
+        .width(reach.width)
+        .height(reach.height)
+        .anchor_vertical(Vertical::Top)
+        .anchor_horizontal(Horizontal::Left)
+        .margin(margin)
         .layer(Layer::Top)
         .space(Zone::Respect)
         .input_region(areas)
-        .child(liquid::view(theme.background, blobs))
+        .child(liquid::view(theme.background, blobs, placement))
+}
+
+// an input area is counted from the window's corner, not the screen's
+fn input_area(region: Region, window: Region) -> InputArea {
+    InputArea {
+        x: (region.x - window.x) as i32,
+        y: (region.y - window.y) as i32,
+        width: region.width as i32,
+        height: region.height as i32,
+    }
+}
+
+fn empty() -> LayerWindow {
+    LayerWindow::new()
+        .width(1.0)
+        .height(1.0)
+        .anchor_vertical(Vertical::Top)
+        .anchor_horizontal(Horizontal::Left)
+        .layer(Layer::Top)
+        .space(Zone::Respect)
+        .click_through()
+        .child(Rectangle::new().width(1.0).height(1.0).fill(Color::TRANSPARENT))
 }

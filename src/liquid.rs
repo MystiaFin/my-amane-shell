@@ -6,9 +6,19 @@ use amane::{Color, Parent, Rectangle, Stack, Widget};
 const MAX_BLOBS: usize = 8;
 
 const EDGE_OFFSET: f32 = 2.0;
-const CONNECTION: f32 = 36.0;
+// how far apart two shapes start to flow into each other
+pub const CONNECTION: f32 = 36.0;
 
 // a rounded rectangle of liquid with content on it, like a panel growing out of an edge
+// where the window drawing the liquid sits, since the liquid melts into the screen's edges
+pub struct Placement {
+    pub x: f32,
+    pub y: f32,
+
+    pub screen_width: f32,
+    pub screen_height: f32,
+}
+
 pub struct Blob {
     x: f32,
     y: f32,
@@ -45,17 +55,18 @@ impl Blob {
 }
 
 /*
- * the shader draws every blob melted into the
- * others and into the window's edges, then each blob's content is laid on top
+ * the shader draws every blob melted into the others and into the
+ * screen's edges, then each blob's content is laid on top; blobs are
+ * placed in screen coordinates
  */
-pub fn view(color: Color, blobs: Vec<Blob>) -> Stack {
+pub fn view(color: Color, blobs: Vec<Blob>, placement: Placement) -> Stack {
     assert!(blobs.len() <= MAX_BLOBS, "the liquid holds at most {MAX_BLOBS} blobs");
 
     let surface = Rectangle::new()
         .width(Parent)
         .height(Parent)
         .shader(shader_path())
-        .shader_values(values(color, &blobs));
+        .shader_values(values(color, &blobs, &placement));
 
     let mut layers: Vec<Box<dyn Widget>> = vec![Box::new(surface)];
 
@@ -68,7 +79,7 @@ pub fn view(color: Color, blobs: Vec<Blob>) -> Stack {
         let holder = Rectangle::new()
             .width(blob.width)
             .height(blob.height)
-            .translate(blob.x, blob.y)
+            .translate(blob.x - placement.x, blob.y - placement.y)
             .child(Stack::new(vec![content]).width(Parent).height(Parent));
 
         layers.push(Box::new(holder));
@@ -78,7 +89,7 @@ pub fn view(color: Color, blobs: Vec<Blob>) -> Stack {
 }
 
 // laid out the way liquid.wgsl reads them, one row of four numbers at a time
-fn values(color: Color, blobs: &[Blob]) -> Vec<[f32; 4]> {
+fn values(color: Color, blobs: &[Blob], placement: &Placement) -> Vec<[f32; 4]> {
     let color = [
         f32::from(color.red()) / 255.0,
         f32::from(color.green()) / 255.0,
@@ -99,12 +110,22 @@ fn values(color: Color, blobs: &[Blob]) -> Vec<[f32; 4]> {
             continue;
         };
 
-        values.push([blob.x, blob.y, blob.width, blob.height]);
+        let x = blob.x - placement.x;
+        let y = blob.y - placement.y;
+
+        values.push([x, y, blob.width, blob.height]);
 
         radii[index / 4][index % 4] = blob.radius;
     }
 
     values.extend(radii);
+
+    values.push([
+        placement.x,
+        placement.y,
+        placement.screen_width,
+        placement.screen_height,
+    ]);
 
     values
 }
