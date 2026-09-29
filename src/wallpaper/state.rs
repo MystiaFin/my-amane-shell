@@ -157,3 +157,10 @@ fn read_selection() -> String {
 
     String::from(path)
 }
+
+// the service sees the file change and reveals the new wallpaper
+pub fn choose(path: &str) {
+    let url = format!("file://{path}");
+
+    fs::write(selection_file(), url).expect("failed to write wallpaper selection");
+}

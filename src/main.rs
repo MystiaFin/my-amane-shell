@@ -26,7 +26,9 @@ fn main() {
         .window_per_monitor(screen_mask::view)
         .window_per_monitor(bar::view)
         .window_per_monitor(overlay::view)
+        .window_per_monitor(wallpaper::picker::view)
         .ipc("launcher", overlay::launcher::ipc)
         .ipc("utility", overlay::utility::ipc)
+        .ipc("wallpaper", wallpaper::picker::ipc)
         .run();
 }

@@ -1,3 +1,4 @@
+pub mod picker;
 mod reveal;
 mod state;
 
@@ -11,7 +12,7 @@ use amane::{
 use crate::bar;
 use crate::theme;
 
-pub use state::Wallpaper;
+pub use state::{Wallpaper, choose};
 
 // only seen while the wallpaper rises in, the screen mask rounds the corners after that
 const FRAME_RADIUS: f32 = 28.0;

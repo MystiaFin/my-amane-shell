@@ -15,6 +15,7 @@ const SPATIAL: [f32; 4] = [0.2, 0.0, 0.0, 1.0];
 const EFFECTS: [f32; 4] = [0.34, 0.8, 0.34, 1.0];
 
 pub const FAST_EFFECTS: u64 = 100;
+pub const DEFAULT_EFFECTS: u64 = 140;
 pub const FAST_SPATIAL: u64 = 240;
 pub const DEFAULT_SPATIAL: u64 = 340;
 
