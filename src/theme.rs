@@ -1,8 +1,11 @@
 mod hsl;
+mod mode;
 
 use amane::{Color, Palette, Service};
 
 use hsl::Hsl;
+
+pub use mode::Mode;
 
 // no tone gets more saturated than this
 const MAX_SATURATION: f32 = 0.82;
@@ -13,6 +16,8 @@ const DANGER_SEED: Color = Color::rgb(0xf3, 0x8b, 0xa8);
 
 // the colors every component draws with, rebuilt from the wallpaper each frame
 pub struct Theme {
+    pub light: bool,
+
     pub background: Color,
     pub surface: Color,
     pub hover_surface: Color,
@@ -34,7 +39,7 @@ pub struct Theme {
 pub fn current() -> Theme {
     let palette = Palette::read();
 
-    let light = palette.light();
+    let light = Mode::read().light.unwrap_or(palette.light());
 
     let base = palette.background();
     let seed = palette.accent();
@@ -74,6 +79,7 @@ pub fn current() -> Theme {
     };
 
     Theme {
+        light,
         background,
         surface,
         hover_surface,

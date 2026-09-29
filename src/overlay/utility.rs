@@ -1,4 +1,5 @@
 mod bluetooth;
+mod brightness;
 mod calendar;
 mod header;
 mod notifications;
@@ -94,12 +95,13 @@ pub fn view(overlay: &Overlay, theme: &Theme, screen: Region) -> Option<PanelVie
 }
 
 fn content(overlay: &Overlay, theme: &Theme, height: f32) -> Rectangle {
-    let fixed = tabs::HEIGHT + calendar::HEIGHT + GAP * 2.0;
+    let fixed = tabs::HEIGHT + brightness::HEIGHT + calendar::HEIGHT + GAP * 3.0;
 
     let pages_height = height - PADDING.top - PADDING.bottom - fixed;
 
     let column = Column::new(children![
         tabs::view(overlay, theme, INNER_WIDTH),
+        brightness::view(overlay, theme, INNER_WIDTH),
         pages(overlay, theme, pages_height),
         calendar::view(overlay, theme, INNER_WIDTH),
     ])
