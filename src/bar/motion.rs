@@ -1,10 +1,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::time::Duration;
 
-use amane::{Animation, Easing};
+use amane::Animation;
 
-const DURATION: Duration = Duration::from_millis(420);
+use crate::motion;
+
+// milliseconds the highlight takes to slide and the star to turn
+const DURATION: u64 = 420;
 
 // where the active workspace highlight is, and how far its star has turned
 struct Motion {
@@ -53,5 +55,5 @@ pub fn highlight(monitor: &str, active: usize, step: f32) -> (f32, f32) {
 }
 
 fn animation(value: f32) -> Animation {
-    Animation::new(value).duration(DURATION).easing(Easing::Out)
+    motion::spatial(value, DURATION)
 }

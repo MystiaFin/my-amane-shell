@@ -1,13 +1,17 @@
 mod results;
 
+use std::cell::{Cell, RefCell};
+
 use amane::{
-    Apps, Center, Column, Image, Key, Padding, Parent, Pointer, Rectangle, Row, Scroll,
-    Service, Stack, Start, Text, TextInput, Widget, children,
+    Apps, Center, Column, Image, Key, Padding, Parent, Pointer, Rectangle, Row, Scroll, Service,
+    Spring, Stack, Start, Text, TextInput, Widget, children,
 };
 
+use super::state::LIST_DURATION;
 use super::{Overlay, PanelView, Region};
 use crate::fonts;
 use crate::liquid::{self, Blob};
+use crate::motion;
 use crate::theme::Theme;
 
 use results::{Entry, Kind};
@@ -48,6 +52,18 @@ const FIXED_HEIGHT: f32 = PADDING.top + GAP + FIELD_HEIGHT + PADDING.bottom;
 
 const ICON_SIZE: f32 = 38.0;
 
+thread_local! {
+    // how many rows fit last frame, so the keys scroll by what is really shown
+    static ROWS_SHOWN: Cell<usize> = const { Cell::new(1) };
+
+    /*
+     * the panel's height springs toward what the results need; kept outside
+     * the service because the view sets its target, and a service write
+     * from the view would draw frames forever
+     */
+    static HEIGHT: RefCell<Option<Spring>> = const { RefCell::new(None) };
+}
+
 // none while fully hidden
 pub fn view(overlay: &Overlay, theme: &Theme, screen: Region) -> Option<PanelView> {
     let progress = overlay.launcher.progress.value();
@@ -63,7 +79,9 @@ pub fn view(overlay: &Overlay, theme: &Theme, screen: Region) -> Option<PanelVie
 
     let rows = visible_rows(screen, entries.len()).max(1);
 
-    let height = FIXED_HEIGHT + rows as f32 * ROW_HEIGHT;
+    ROWS_SHOWN.set(rows);
+
+    let height = follow_height(FIXED_HEIGHT + rows as f32 * ROW_HEIGHT);
 
     let hidden = height + HIDDEN_MARGIN;
 
@@ -72,7 +90,7 @@ pub fn view(overlay: &Overlay, theme: &Theme, screen: Region) -> Option<PanelVie
 
     let blob = Blob::new(x, y, width, height)
         .radius(RADIUS)
-        .child(content(overlay, theme, &entries, width, rows));
+        .child(content(overlay, theme, &entries, width, height));
 
     let input = Region {
         x,
@@ -97,6 +115,16 @@ pub fn view(overlay: &Overlay, theme: &Theme, screen: Region) -> Option<PanelVie
     Some(PanelView { blob, input, reach })
 }
 
+fn follow_height(target: f32) -> f32 {
+    HEIGHT.with_borrow_mut(|height| {
+        let spring = height.get_or_insert_with(|| motion::size(target));
+
+        spring.to(target);
+
+        spring.value()
+    })
+}
+
 fn max_height(screen: Region) -> f32 {
     MAX_HEIGHT.min(screen.height - 60.0)
 }
@@ -116,11 +144,11 @@ fn content(
     theme: &Theme,
     entries: &[Entry],
     width: f32,
-    rows: usize,
+    height: f32,
 ) -> Rectangle {
     let inner_width = width - PADDING.left - PADDING.right;
 
-    let list_height = rows as f32 * ROW_HEIGHT;
+    let list_height = height - FIXED_HEIGHT;
 
     let field = Rectangle::new()
         .width(inner_width)
@@ -176,22 +204,37 @@ fn list(
         return area.align_child(Center, Center).child(empty);
     }
 
+    // both counted in rows from the first result, so they slide together when the list scrolls
+    let scroll = overlay.scroll.value();
+    let highlight_row = overlay.highlight.value();
+
     let highlight = Rectangle::new()
         .width(width)
         .height(ROW_HEIGHT)
         .radius(INNER_RADIUS)
         .fill(theme.selected_surface)
-        .translate(0.0, overlay.highlight.value() * ROW_HEIGHT);
+        .translate(0.0, (highlight_row - scroll) * ROW_HEIGHT);
+
+    // only the rows in view are built, plus one that is sliding in
+    let top = scroll.max(0.0).floor() as usize;
+
+    let last = (top + ROWS_SHOWN.get() + 1).min(entries.len());
 
     let mut rows: Vec<Box<dyn Widget>> = Vec::new();
 
-    let last = (overlay.first + MAX_ROWS).min(entries.len());
-
-    for index in overlay.first..last {
+    for index in top..last {
         rows.push(Box::new(row(overlay, theme, &entries[index], index, width)));
     }
 
-    area.child(Stack::new(children![highlight, Column::new(rows)]))
+    let sliding = (scroll - top as f32) * ROW_HEIGHT;
+
+    let rows = Rectangle::new()
+        .width(width)
+        .height(ROW_HEIGHT * (last - top) as f32)
+        .translate(0.0, -sliding)
+        .child(Column::new(rows));
+
+    area.child(Stack::new(children![highlight, rows]))
 }
 
 fn row(overlay: &Overlay, theme: &Theme, entry: &Entry, index: usize, width: f32) -> Rectangle {
@@ -295,7 +338,7 @@ fn show(overlay: &mut Overlay) {
 
     TextInput::set_text(INPUT, "");
 
-    select(overlay, 0, 0);
+    reset_list(overlay);
 }
 
 // the window's keys while the launcher is open; letters and enter go to the search field
@@ -327,7 +370,7 @@ pub fn key_pressed(key: Key) {
 
             TextInput::set_text(INPUT, "");
 
-            select(&mut overlay, 0, 0);
+            reset_list(&mut overlay);
         }
 
         Key::Escape => overlay.launcher.hide(),
@@ -343,20 +386,33 @@ pub fn key_pressed(key: Key) {
 fn select(overlay: &mut Overlay, index: usize, count: usize) {
     overlay.selected = index;
 
+    // the rows really shown, which can be fewer than the most there is room for
+    let shown = ROWS_SHOWN.get();
+
     if index < overlay.first {
         overlay.first = index;
     }
 
-    if index >= overlay.first + MAX_ROWS {
-        overlay.first = index + 1 - MAX_ROWS;
+    if index >= overlay.first + shown {
+        overlay.first = index + 1 - shown;
     }
 
     // a shorter list may leave the old top past its end
-    overlay.first = overlay.first.min(count.saturating_sub(1));
+    overlay.first = overlay.first.min(count.saturating_sub(shown));
 
-    let row = (index - overlay.first.min(index)) as f32;
+    let first = overlay.first as f32;
 
-    overlay.highlight.to(row);
+    overlay.scroll.to(first);
+    overlay.highlight.to(index as f32);
+}
+
+// a new search starts at the top, without sliding there from the old results
+fn reset_list(overlay: &mut Overlay) {
+    overlay.selected = 0;
+    overlay.first = 0;
+
+    overlay.scroll = motion::spatial(0.0, LIST_DURATION);
+    overlay.highlight = motion::spatial(0.0, LIST_DURATION);
 }
 
 fn query_changed(query: String) {
@@ -369,9 +425,7 @@ fn query_changed(query: String) {
 
     overlay.query = query;
 
-    overlay.first = 0;
-
-    select(&mut overlay, 0, 0);
+    reset_list(&mut overlay);
 }
 
 // wheel down shows later results, the selection stays where it was
@@ -380,7 +434,7 @@ fn scrolled(scroll: Scroll) {
 
     let count = results::find(&overlay.query, &overlay.sessions).len();
 
-    let last_top = count.saturating_sub(MAX_ROWS);
+    let last_top = count.saturating_sub(ROWS_SHOWN.get());
 
     if scroll.y > 0.0 {
         overlay.first = (overlay.first + 1).min(last_top);
@@ -388,9 +442,9 @@ fn scrolled(scroll: Scroll) {
         overlay.first = overlay.first.saturating_sub(1);
     }
 
-    let row = overlay.selected as f32 - overlay.first as f32;
+    let first = overlay.first as f32;
 
-    overlay.highlight.to(row);
+    overlay.scroll.to(first);
 }
 
 fn hover_row(index: usize, inside: bool) {
@@ -425,7 +479,7 @@ fn launch_selected() {
 
             TextInput::set_text(INPUT, "!");
 
-            select(&mut overlay, 0, 0);
+            reset_list(&mut overlay);
         }
 
         Kind::Tmux(session) => {

@@ -1,10 +1,11 @@
-use std::time::Duration;
-
-use amane::{Animation, Easing, Service};
+use amane::{Animation, Service};
 
 use super::panel::Panel;
+use crate::motion;
 
-const FILL_DURATION: Duration = Duration::from_millis(200);
+// how long the power menu's hover fill and the launcher's list take to move
+const FILL_DURATION: u64 = 340;
+pub const LIST_DURATION: u64 = 240;
 
 // which panels are out, shared by the bar that opens them and the overlay that draws them
 pub struct Overlay {
@@ -26,8 +27,9 @@ pub struct Overlay {
 
     pub hovered_row: Option<usize>,
 
-    // where the selection highlight is, in rows from the top of the list
+    // which result the highlight is on, and which one is at the top of the list, both sliding
     pub highlight: Animation,
+    pub scroll: Animation,
 
     pub sessions: Vec<String>,
 }
@@ -37,7 +39,7 @@ impl Service for Overlay {
         let mut action_fills = Vec::new();
 
         for _ in 0..super::power_menu::ACTION_COUNT {
-            action_fills.push(fast(0.0));
+            action_fills.push(motion::spatial(0.0, FILL_DURATION));
         }
 
         Self {
@@ -49,7 +51,8 @@ impl Service for Overlay {
             selected: 0,
             first: 0,
             hovered_row: None,
-            highlight: fast(0.0),
+            highlight: motion::spatial(0.0, LIST_DURATION),
+            scroll: motion::spatial(0.0, LIST_DURATION),
             sessions: Vec::new(),
         }
     }
@@ -101,10 +104,4 @@ impl Overlay {
             self.power_menu.hide();
         }
     }
-}
-
-pub fn fast(value: f32) -> Animation {
-    Animation::new(value)
-        .duration(FILL_DURATION)
-        .easing(Easing::Out)
 }

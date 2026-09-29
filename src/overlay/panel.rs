@@ -1,8 +1,6 @@
-use std::time::Duration;
+use amane::Spring;
 
-use amane::{Animation, Easing};
-
-const DURATION: Duration = Duration::from_millis(350);
+use crate::motion;
 
 // one panel that grows out of a screen edge
 pub struct Panel {
@@ -13,18 +11,16 @@ pub struct Panel {
     pub was_hovered: bool,
 
     // 0 when hidden behind the edge, 1 when fully out
-    pub progress: Animation,
+    pub progress: Spring,
 }
 
 impl Panel {
     pub fn new() -> Self {
-        let progress = Animation::new(0.0).duration(DURATION).easing(Easing::Out);
-
         Self {
             shown: false,
             hovered: false,
             was_hovered: false,
-            progress,
+            progress: motion::panel(),
         }
     }
 
@@ -32,12 +28,14 @@ impl Panel {
         self.shown = true;
         self.was_hovered = false;
 
+        self.progress.set_damping(motion::PANEL_OPEN_DAMPING);
         self.progress.to(1.0);
     }
 
     pub fn hide(&mut self) {
         self.shown = false;
 
+        self.progress.set_damping(motion::PANEL_CLOSE_DAMPING);
         self.progress.to(0.0);
     }
 
