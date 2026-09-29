@@ -11,7 +11,9 @@ pub use state::Overlay;
 
 /*
  * one window over the whole screen that every panel grows out of;
- * it only takes input where a panel is, so the desktop below still works
+ * it only takes input where a panel is, so the desktop below still works.
+ * it stays mapped even with every panel away: mapping a window takes a
+ * round trip with the compositor, long enough to miss a panel's opening
  */
 pub fn view(_: &Monitor) -> LayerWindow {
     let theme = theme::current();
@@ -26,15 +28,11 @@ pub fn view(_: &Monitor) -> LayerWindow {
         areas.push(area);
     }
 
-    // hidden while every panel is tucked away, so nothing is drawn at all
-    let visible = !blobs.is_empty();
-
     LayerWindow::new()
         .width(Full)
         .height(Full)
         .layer(Layer::Top)
         .space(Zone::Respect)
         .input_region(areas)
-        .visible(visible)
         .child(liquid::view(theme.background, blobs))
 }
