@@ -8,7 +8,7 @@ mod screen_mask;
 mod theme;
 mod wallpaper;
 
-use amane::{App, Apps, Service};
+use amane::{App, Apps, Notifications, Service};
 
 use wallpaper::Wallpaper;
 
@@ -18,6 +18,9 @@ fn main() {
 
     // the app list is read once up front, so the launcher opens without waiting for it
     drop(Apps::read());
+
+    // the notification server starts here, so nothing sent before the panel first opens is lost
+    drop(Notifications::read());
 
     App::new()
         .font(fonts::BODY)

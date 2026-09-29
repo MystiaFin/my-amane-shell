@@ -1,5 +1,6 @@
 mod calendar;
 mod header;
+mod notifications;
 mod switch;
 mod tabs;
 mod wifi;
@@ -126,6 +127,7 @@ fn pages(overlay: &Overlay, theme: &Theme, height: f32) -> Rectangle {
         }
 
         let content = match page {
+            Page::Notifications => Some(notifications::view(overlay, theme, INNER_WIDTH, height)),
             Page::Wifi => Some(wifi::view(overlay, theme, INNER_WIDTH, height)),
             _ => None,
         };
@@ -248,4 +250,9 @@ pub fn hover(name: String, inside: bool) {
 
 pub fn hovered(overlay: &Overlay, name: &str) -> bool {
     overlay.hovered.as_deref() == Some(name)
+}
+
+// where a hover color fades to: 1 while the pointer is on the control
+pub fn fade_target(overlay: &Overlay, name: &str) -> f32 {
+    if hovered(overlay, name) { 1.0 } else { 0.0 }
 }

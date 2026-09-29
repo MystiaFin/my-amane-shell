@@ -98,6 +98,23 @@ impl Clock {
 
         civil_date(days)
     }
+
+    // 24 hour time of some other moment, like "21:05" for when a notification came
+    pub fn hours_minutes(&self, moment: SystemTime) -> String {
+        let since_epoch = moment
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::ZERO)
+            .as_secs() as i64;
+
+        let local = since_epoch + self.offset;
+
+        let today = local.rem_euclid(SECONDS_PER_DAY);
+
+        let hours = today / 3600;
+        let minutes = today % 3600 / 60;
+
+        format!("{hours:02}:{minutes:02}")
+    }
 }
 
 /*

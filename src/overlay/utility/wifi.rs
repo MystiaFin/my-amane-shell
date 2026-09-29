@@ -7,7 +7,7 @@ use amane::{
 };
 
 use super::header::{self, Header};
-use super::{close_password, hover, hovered};
+use super::{close_password, fade_target, hover};
 use crate::fonts;
 use crate::motion::{self, FAST_SPATIAL};
 use crate::overlay::Overlay;
@@ -481,10 +481,6 @@ fn small_button(
                 .tight()
                 .color(icon_color),
         )
-}
-
-fn fade_target(overlay: &Overlay, name: &str) -> f32 {
-    if hovered(overlay, name) { 1.0 } else { 0.0 }
 }
 
 fn signal_icon(strength: u8) -> &'static str {
