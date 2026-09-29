@@ -8,6 +8,7 @@ mod workspaces;
 
 use amane::{Full, Layer, LayerWindow, Monitor, Parent, Rectangle, Row, Vertical, Zone, children};
 
+use crate::overlay::Overlay;
 use crate::theme;
 
 pub const HEIGHT: f32 = 40.0;
@@ -38,6 +39,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
                 .width(Parent)
                 .height(Parent)
                 .fill(theme.background)
+                .on_hover(Overlay::hover_bar)
                 .child(sections),
         )
 }

@@ -5,6 +5,7 @@ use amane::{
 
 use super::{motion, star};
 use crate::fonts;
+use crate::overlay::Overlay;
 use crate::theme::Theme;
 
 // the logo and the inactive dot, the active star is drawn in star.rs
@@ -37,6 +38,8 @@ pub fn view(monitor: &Monitor, theme: &Theme, width: f32) -> Row {
     let logo = Rectangle::new()
         .width(30.0)
         .height(STRIP_HEIGHT)
+        .cursor(Pointer)
+        .on_click(|_| Overlay::toggle_power_menu())
         .align_child(Center, Center)
         .child(Text::new(LOGO).size(28.0).font(fonts::NERD).color(theme.accent));
 
