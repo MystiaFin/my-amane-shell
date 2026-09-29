@@ -4,6 +4,7 @@ mod fonts;
 mod liquid;
 mod motion;
 mod overlay;
+mod screen_mask;
 mod theme;
 mod wallpaper;
 
@@ -20,6 +21,9 @@ fn main() {
 
     App::new()
         .font(fonts::BODY)
+        .window_per_monitor(wallpaper::view)
+        // made before the bar and panels, so it sits under them in the same layer
+        .window_per_monitor(screen_mask::view)
         .window_per_monitor(bar::view)
         .window_per_monitor(overlay::view)
         .ipc("launcher", overlay::launcher::ipc)

@@ -1,55 +1,77 @@
-use std::env;
-use std::fs;
+mod reveal;
+mod state;
 
-use amane::{Palette, Service};
+use std::sync::atomic::Ordering;
 
-// the wallpaper picker writes the chosen file here
-const SELECTION: &str = ".config/quickshell/wallpaper-selection";
+use amane::{
+    Color, Full, Image, Layer, LayerWindow, Monitor, Parent, Rectangle, Service, Shadow, Stack,
+    Zone, children,
+};
 
-const PALETTE_SIZE: usize = 16;
+use crate::bar;
+use crate::theme;
 
-// the path of the current wallpaper, re-read whenever the selection file changes
-pub struct Wallpaper {
-    pub path: String,
-}
+pub use state::Wallpaper;
 
-impl Service for Wallpaper {
-    fn new() -> Self {
-        let path = read_selection();
+// only seen while the wallpaper rises in, the screen mask rounds the corners after that
+const FRAME_RADIUS: f32 = 28.0;
 
-        Palette::write().open(&path, PALETTE_SIZE);
+// the rounded edge of the area below the bar, the same as the screen mask's
+pub const SCREEN_RADIUS: f32 = 16.0;
 
-        Self { path }
+const SHADOW: Color = Color::rgba(0, 0, 0, 0x50);
+const SHADOW_BLUR: f32 = 8.0;
+
+// under everything, taking no clicks; niri also shows it behind the overview
+pub fn view(monitor: &Monitor) -> LayerWindow {
+    let theme = theme::current();
+
+    let wallpaper = Wallpaper::read();
+
+    let width = monitor.width as f32;
+    let height = monitor.height as f32;
+
+    let backdrop = Rectangle::new()
+        .width(Parent)
+        .height(Parent)
+        .fill(theme.background)
+        .opacity(wallpaper.backdrop.value());
+
+    if Image::loaded(&wallpaper.shown) {
+        state::DRAWN.store(true, Ordering::Relaxed);
     }
 
-    fn listen() {
-        for _ in amane::watch_file(&selection_file()) {
-            let path = read_selection();
+    let below = (1.0 - wallpaper.rise.value()) * height;
 
-            if path == Self::read().path {
-                continue;
-            }
+    let mut frame = Rectangle::new()
+        .width(Parent)
+        .height(Parent)
+        .radius(FRAME_RADIUS)
+        .fill(Image::cover(&wallpaper.shown))
+        .translate(0.0, below);
 
-            Palette::write().open(&path, PALETTE_SIZE);
+    if let Some(incoming) = &wallpaper.incoming {
+        let center = (wallpaper.center.0 * width, wallpaper.center.1 * height);
 
-            Self::write().path = path;
-        }
+        let progress = wallpaper.reveal.value();
+
+        frame = frame.child(reveal::view(incoming, center, progress, width, height));
     }
-}
 
-fn selection_file() -> String {
-    let home = env::var("HOME").expect("failed to find home: HOME is not set");
+    // pressed into the area below the bar, so its edge reads as the screen's edge
+    let shadow = Rectangle::new()
+        .width(Parent)
+        .height(height - bar::HEIGHT)
+        .translate(0.0, bar::HEIGHT)
+        .radius(SCREEN_RADIUS)
+        .shadow(Shadow::inner(SHADOW).blur(SHADOW_BLUR));
 
-    format!("{home}/{SELECTION}")
-}
-
-// the file holds a url like file:///home/me/Pictures/wall.png
-fn read_selection() -> String {
-    let text = fs::read_to_string(selection_file()).unwrap_or_default();
-
-    let url = text.trim();
-
-    let path = url.strip_prefix("file://").unwrap_or(url);
-
-    String::from(path)
+    LayerWindow::new()
+        .width(Full)
+        .height(Full)
+        .layer(Layer::Background)
+        .space(Zone::Ignore)
+        .namespace("wallpaper")
+        .click_through()
+        .child(Stack::new(children![backdrop, frame, shadow]).width(Parent).height(Parent))
 }
