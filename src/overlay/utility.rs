@@ -1,3 +1,4 @@
+mod bluetooth;
 mod calendar;
 mod header;
 mod notifications;
@@ -5,7 +6,7 @@ mod switch;
 mod tabs;
 mod wifi;
 
-use amane::{Column, Key, Network, Padding, Rectangle, Service, Stack, Widget, children};
+use amane::{Bluetooth, Column, Key, Network, Padding, Rectangle, Service, Stack, Widget, children};
 
 use super::{Overlay, PanelView, Region};
 use crate::liquid::{self, Blob};
@@ -127,19 +128,16 @@ fn pages(overlay: &Overlay, theme: &Theme, height: f32) -> Rectangle {
         }
 
         let content = match page {
-            Page::Notifications => Some(notifications::view(overlay, theme, INNER_WIDTH, height)),
-            Page::Wifi => Some(wifi::view(overlay, theme, INNER_WIDTH, height)),
-            _ => None,
+            Page::Notifications => notifications::view(overlay, theme, INNER_WIDTH, height),
+            Page::Wifi => wifi::view(overlay, theme, INNER_WIDTH, height),
+            Page::Bluetooth => bluetooth::view(overlay, theme, INNER_WIDTH, height),
         };
 
-        let mut slot = Rectangle::new()
+        let slot = Rectangle::new()
             .width(INNER_WIDTH)
             .height(height)
-            .translate(offset * INNER_WIDTH, 0.0);
-
-        if let Some(content) = content {
-            slot = slot.child(content);
-        }
+            .translate(offset * INNER_WIDTH, 0.0)
+            .child(content);
 
         layers.push(Box::new(slot));
     }
@@ -161,9 +159,20 @@ fn pages(overlay: &Overlay, theme: &Theme, height: f32) -> Rectangle {
 pub fn opened(overlay: &mut Overlay) {
     close_password(overlay);
 
-    if overlay.page == Page::Wifi {
-        Network::scan();
+    match overlay.page {
+        Page::Wifi => Network::scan(),
+        Page::Bluetooth => Bluetooth::start_scan(),
+        Page::Notifications => {}
     }
+}
+
+// every way the panel closes goes through here, so a bluetooth scan never outlives it
+pub fn close(overlay: &mut Overlay) {
+    if overlay.utility.shown && overlay.page == Page::Bluetooth {
+        Bluetooth::stop_scan();
+    }
+
+    overlay.utility.hide();
 }
 
 // "toggle", "show" or "hide", then optionally the page to show
@@ -203,6 +212,10 @@ pub fn select(page: Page) {
         return;
     }
 
+    if overlay.page == Page::Bluetooth {
+        Bluetooth::stop_scan();
+    }
+
     overlay.page = page;
 
     opened(&mut overlay);
@@ -227,7 +240,7 @@ pub fn key_pressed(key: Key) {
         return;
     }
 
-    overlay.utility.hide();
+    close(&mut overlay);
 }
 
 pub fn close_password(overlay: &mut Overlay) {

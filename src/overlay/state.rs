@@ -92,7 +92,7 @@ impl Overlay {
         let mut overlay = Self::write();
 
         overlay.launcher.hide();
-        overlay.utility.hide();
+        utility::close(&mut overlay);
         overlay.power_menu.toggle();
     }
 
@@ -107,7 +107,7 @@ impl Overlay {
         overlay.power_menu.hide();
 
         if overlay.utility.shown {
-            overlay.utility.hide();
+            utility::close(&mut overlay);
 
             return;
         }
