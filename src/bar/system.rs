@@ -1,10 +1,11 @@
 use amane::{
-    Battery, Center, Color, End, Memory, Parent, Rectangle, Row, Service, SpaceBetween, Stack,
-    Text, Widget, children,
+    Battery, Center, Color, End, Memory, Parent, Pointer, Rectangle, Row, Service, SpaceBetween,
+    Stack, Text, Widget, children,
 };
 
 use super::{pill, ring};
 use crate::fonts;
+use crate::overlay::Overlay;
 use crate::theme::Theme;
 
 // the memory icon, and the notification, wifi and bluetooth tray icons
@@ -127,7 +128,7 @@ fn memory(theme: &Theme) -> Row {
     indicator(usage, color, MEMORY_ICON, &text, theme)
 }
 
-// only shows the icons until the utility center exists
+// opens the utility center
 fn tray(theme: &Theme) -> Rectangle {
     let mut icons: Vec<Box<dyn Widget>> = Vec::new();
 
@@ -144,6 +145,8 @@ fn tray(theme: &Theme) -> Rectangle {
         .align(Center);
 
     pill::view(TRAY_WIDTH, theme.accent)
+        .cursor(Pointer)
+        .on_click(|_| Overlay::toggle_utility())
         .align_child(Center, Center)
         .child(row)
 }

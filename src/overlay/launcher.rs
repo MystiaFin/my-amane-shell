@@ -332,6 +332,7 @@ pub fn ipc(arguments: &[String]) -> String {
 // always opens on an empty search, at the top of the list
 fn show(overlay: &mut Overlay) {
     overlay.power_menu.hide();
+    overlay.utility.hide();
     overlay.launcher.show();
 
     overlay.query.clear();

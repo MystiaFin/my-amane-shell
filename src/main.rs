@@ -23,5 +23,6 @@ fn main() {
         .window_per_monitor(bar::view)
         .window_per_monitor(overlay::view)
         .ipc("launcher", overlay::launcher::ipc)
+        .ipc("utility", overlay::utility::ipc)
         .run();
 }

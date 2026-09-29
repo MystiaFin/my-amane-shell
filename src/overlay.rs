@@ -3,9 +3,10 @@ mod panel;
 pub mod power_menu;
 mod region;
 mod state;
+pub mod utility;
 
 use amane::{
-    Color, Horizontal, InputArea, Keyboard, Layer, LayerWindow, Margin, Monitor, Rectangle,
+    Color, Horizontal, InputArea, Key, Keyboard, Layer, LayerWindow, Margin, Monitor, Rectangle,
     Service, Vertical, Zone,
 };
 
@@ -57,13 +58,22 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         panels.push(panel);
     }
 
+    if let Some(panel) = utility::view(&overlay, &theme, screen) {
+        panels.push(panel);
+    }
+
     let Some(first) = panels.first() else {
         return empty();
     };
 
-    // the launcher is typed into, so it takes the keyboard while it is open
-    let keyboard = if overlay.launcher.shown {
+    /*
+     * the launcher and a password field are typed into, so they take the
+     * keyboard while open; the utility center takes it once clicked, for escape
+     */
+    let keyboard = if overlay.launcher.shown || utility::wants_keyboard(&overlay) {
         Keyboard::Exclusive
+    } else if overlay.utility.shown {
+        Keyboard::OnDemand
     } else {
         Keyboard::None
     };
@@ -108,9 +118,15 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .layer(Layer::Top)
         .space(Zone::Respect)
         .keyboard(keyboard)
-        .on_key(launcher::key_pressed)
+        .on_key(key_pressed)
         .input_region(areas)
         .child(liquid::view(theme.background, blobs, placement))
+}
+
+// only one panel is out at a time, so only one of these acts on the key
+fn key_pressed(key: Key) {
+    launcher::key_pressed(key);
+    utility::key_pressed(key);
 }
 
 // an input area is counted from the window's corner, not the screen's
