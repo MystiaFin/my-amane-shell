@@ -4,14 +4,14 @@ use std::cell::{Cell, RefCell};
 
 use amane::{
     Apps, Center, Column, Image, Key, Padding, Parent, Pointer, Rectangle, Row, Scroll, Service,
-    Spring, Stack, Start, Text, TextInput, Widget, children,
+    Stack, Start, Text, TextInput, Widget, children,
 };
 
 use super::state::LIST_DURATION;
 use super::{Overlay, PanelView, Region};
 use crate::fonts;
 use crate::liquid::{self, Blob};
-use crate::motion;
+use crate::motion::{self, Spring};
 use crate::theme::Theme;
 
 use results::{Entry, Kind};

@@ -1,9 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use amane::Animation;
-
-use crate::motion;
+use crate::motion::{self, Glide};
 
 // milliseconds the highlight takes to slide and the star to turn
 const DURATION: u64 = 420;
@@ -12,9 +10,9 @@ const DURATION: u64 = 420;
 struct Motion {
     active: usize,
 
-    position: Animation,
+    position: Glide,
 
-    rotation: Animation,
+    rotation: Glide,
 
     // where the star is turning to, counted apart so a switch mid-turn still lands straight
     turned: f32,
@@ -54,6 +52,6 @@ pub fn highlight(monitor: &str, active: usize, step: f32) -> (f32, f32) {
     })
 }
 
-fn animation(value: f32) -> Animation {
+fn animation(value: f32) -> Glide {
     motion::spatial(value, DURATION)
 }

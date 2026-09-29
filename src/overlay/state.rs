@@ -1,7 +1,7 @@
-use amane::{Animation, Service};
+use amane::Service;
 
 use super::panel::Panel;
-use crate::motion;
+use crate::motion::{self, Glide};
 
 // how long the power menu's hover fill and the launcher's list take to move
 const FILL_DURATION: u64 = 340;
@@ -12,7 +12,7 @@ pub struct Overlay {
     pub power_menu: Panel,
 
     // how far each power menu button's hover color has filled it, 0 to 1
-    pub action_fills: Vec<Animation>,
+    pub action_fills: Vec<Glide>,
 
     // leaving a panel for the bar keeps it open
     pub bar_hovered: bool,
@@ -28,8 +28,8 @@ pub struct Overlay {
     pub hovered_row: Option<usize>,
 
     // which result the highlight is on, and which one is at the top of the list, both sliding
-    pub highlight: Animation,
-    pub scroll: Animation,
+    pub highlight: Glide,
+    pub scroll: Glide,
 
     pub sessions: Vec<String>,
 }

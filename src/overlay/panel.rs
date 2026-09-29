@@ -1,6 +1,4 @@
-use amane::Spring;
-
-use crate::motion;
+use crate::motion::{self, Spring};
 
 // one panel that grows out of a screen edge
 pub struct Panel {
