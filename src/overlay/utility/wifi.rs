@@ -2,8 +2,8 @@ use std::cell::{Cell, RefCell};
 use std::time::{Duration, Instant};
 
 use amane::{
-    AccessPoint, Center, Color, Column, End, Network, Padding, Pointer, Rectangle, Row,
-    ScrollArea, Service, Stack, Start, Text, TextInput, Weight, Widget, children,
+    AccessPoint, Center, Color, Column, End, Network, Padding, Pointer, Rectangle, Row, ScrollArea,
+    Service, Stack, Start, Text, TextInput, Weight, Widget, children,
 };
 
 use super::header::{self, Header};
@@ -112,13 +112,7 @@ fn switch_wifi(enabled: bool) {
     drop(Overlay::write());
 }
 
-fn list(
-    overlay: &Overlay,
-    theme: &Theme,
-    network: &Network,
-    width: f32,
-    height: f32,
-) -> Rectangle {
+fn list(overlay: &Overlay, theme: &Theme, network: &Network, width: f32, height: f32) -> Rectangle {
     let area = Rectangle::new().width(width).height(height);
 
     if network.access_points().is_empty() {
@@ -250,6 +244,7 @@ fn top_row(
     let signal = Text::new(signal_icon(access_point.strength()))
         .size(17.0)
         .font(fonts::NERD)
+        .tight()
         .color(theme.accent);
 
     let signal = Rectangle::new()
@@ -310,10 +305,18 @@ fn top_row(
             .width(ROW_HEIGHT)
             .height(ROW_HEIGHT)
             .align_child(End, Center)
-            .child(Text::new(icon).size(14.0).font(fonts::NERD).color(theme.muted_text))
+            .child(
+                Text::new(icon)
+                    .size(14.0)
+                    .font(fonts::NERD)
+                    .tight()
+                    .color(theme.muted_text),
+            )
     };
 
-    Row::new(children![signal, text, action]).gap(9.0).align(Center)
+    Row::new(children![signal, text, action])
+        .gap(9.0)
+        .align(Center)
 }
 
 fn disconnect_button(overlay: &Overlay, theme: &Theme, connecting: bool) -> Rectangle {
@@ -323,7 +326,12 @@ fn disconnect_button(overlay: &Overlay, theme: &Theme, connecting: bool) -> Rect
 
     let alpha = (amount * 255.0).round() as u8;
 
-    let fill = Color::rgba(theme.danger.red(), theme.danger.green(), theme.danger.blue(), alpha);
+    let fill = Color::rgba(
+        theme.danger.red(),
+        theme.danger.green(),
+        theme.danger.blue(),
+        alpha,
+    );
 
     let icon_color = theme::mix(theme.danger, theme.on_accent, amount);
 
@@ -333,7 +341,13 @@ fn disconnect_button(overlay: &Overlay, theme: &Theme, connecting: bool) -> Rect
         .radius(ROW_HEIGHT / 2.0)
         .fill(fill)
         .align_child(Center, Center)
-        .child(Text::new(DISCONNECT_ICON).size(16.0).font(fonts::NERD).color(icon_color));
+        .child(
+            Text::new(DISCONNECT_ICON)
+                .size(16.0)
+                .font(fonts::NERD)
+                .tight()
+                .color(icon_color),
+        );
 
     // waits for the last change to finish first
     if connecting {
@@ -387,7 +401,13 @@ fn password_row(overlay: &Overlay, theme: &Theme, ssid: &str, width: f32) -> Row
             overlay.show_password = !overlay.show_password;
         })
         .align_child(Center, Center)
-        .child(Text::new(reveal_icon).size(14.0).font(fonts::NERD).color(theme.muted_text));
+        .child(
+            Text::new(reveal_icon)
+                .size(14.0)
+                .font(fonts::NERD)
+                .tight()
+                .color(theme.muted_text),
+        );
 
     let field = Rectangle::new()
         .width(field_width)
@@ -397,15 +417,31 @@ fn password_row(overlay: &Overlay, theme: &Theme, ssid: &str, width: f32) -> Row
         .border(1.0, theme.accent)
         .child(Stack::new(children![input, reveal]));
 
-    let cancel = small_button(overlay, theme, "wifi:cancel", CLOSE_ICON, theme.danger, theme.border)
-        .on_click(|_| close_password(&mut Overlay::write()));
+    let cancel = small_button(
+        overlay,
+        theme,
+        "wifi:cancel",
+        CLOSE_ICON,
+        theme.danger,
+        theme.border,
+    )
+    .on_click(|_| close_password(&mut Overlay::write()));
 
     let name = String::from(ssid);
 
-    let confirm = small_button(overlay, theme, "wifi:join", CONFIRM_ICON, theme.success, theme.success)
-        .on_click(move |_| join(&name, &TYPED.take()));
+    let confirm = small_button(
+        overlay,
+        theme,
+        "wifi:join",
+        CONFIRM_ICON,
+        theme.success,
+        theme.success,
+    )
+    .on_click(move |_| join(&name, &TYPED.take()));
 
-    Row::new(children![field, cancel, confirm]).gap(7.0).align(Center)
+    Row::new(children![field, cancel, confirm])
+        .gap(7.0)
+        .align(Center)
 }
 
 // a square icon button that takes on a color while the pointer is on it
@@ -438,7 +474,13 @@ fn small_button(
         .cursor(Pointer)
         .on_hover(move |inside| hover(hover_name.clone(), inside))
         .align_child(Center, Center)
-        .child(Text::new(icon).size(14.0).font(fonts::NERD).color(icon_color))
+        .child(
+            Text::new(icon)
+                .size(14.0)
+                .font(fonts::NERD)
+                .tight()
+                .color(icon_color),
+        )
 }
 
 fn fade_target(overlay: &Overlay, name: &str) -> f32 {

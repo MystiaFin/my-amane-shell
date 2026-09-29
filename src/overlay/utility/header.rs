@@ -40,7 +40,13 @@ pub fn view(
         .radius(12.0)
         .fill(icon_fill)
         .align_child(Center, Center)
-        .child(Text::new(header.icon).size(18.0).font(fonts::NERD).color(theme.on_accent));
+        .child(
+            Text::new(header.icon)
+                .size(18.0)
+                .font(fonts::NERD)
+                .tight()
+                .color(theme.on_accent),
+        );
 
     // what is left between the icon and the switch
     let text_width = width - PADDING * 2.0 - ICON_SIZE - switch::WIDTH - GAP * 2.0;
@@ -57,7 +63,10 @@ pub fn view(
         .color(header.status_color)
         .elide();
 
-    let status = Rectangle::new().width(text_width).height(16.0).child(status);
+    let status = Rectangle::new()
+        .width(text_width)
+        .height(16.0)
+        .child(status);
 
     let text = Rectangle::new()
         .width(text_width)
@@ -78,5 +87,9 @@ pub fn view(
             bottom: PADDING,
             left: PADDING,
         })
-        .child(Row::new(children![icon, text, switch]).gap(GAP).align(Center))
+        .child(
+            Row::new(children![icon, text, switch])
+                .gap(GAP)
+                .align(Center),
+        )
 }

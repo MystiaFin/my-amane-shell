@@ -88,5 +88,11 @@ fn button(overlay: &Overlay, theme: &Theme, tab: &Tab) -> Rectangle {
         .on_hover(move |inside| hover(hover_name.clone(), inside))
         .on_click(move |_| select(page))
         .align_child(Center, Center)
-        .child(Text::new(tab.icon).size(18.0).font(fonts::NERD).color(icon_color))
+        .child(
+            Text::new(tab.icon)
+                .size(18.0)
+                .font(fonts::NERD)
+                .tight()
+                .color(icon_color),
+        )
 }

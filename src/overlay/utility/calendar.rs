@@ -161,7 +161,14 @@ fn month(
     let column = Column::new(children![
         title,
         weekdays(theme, width),
-        grid(overlay, theme, &days(today, year, month), offset, width, grid_height),
+        grid(
+            overlay,
+            theme,
+            &days(today, year, month),
+            offset,
+            width,
+            grid_height
+        ),
     ])
     .gap(GAP);
 
@@ -174,7 +181,10 @@ fn weekdays(theme: &Theme, width: f32) -> Row {
     let mut names: Vec<Box<dyn Widget>> = Vec::new();
 
     for name in WEEKDAYS {
-        let text = Text::new(name).size(9.0).font(fonts::BODY).color(theme.muted_text);
+        let text = Text::new(name)
+            .size(9.0)
+            .font(fonts::BODY)
+            .color(theme.muted_text);
 
         let cell = Rectangle::new()
             .width(cell_width)
@@ -210,7 +220,14 @@ fn grid(
             // hover only reaches the month in place, not one sliding past
             let hover_name = format!("day:{offset}:{index}");
 
-            let cell = cell(overlay, theme, &days[index], hover_name, cell_width, cell_height);
+            let cell = cell(
+                overlay,
+                theme,
+                &days[index],
+                hover_name,
+                cell_width,
+                cell_height,
+            );
 
             cells.push(Box::new(cell));
         }
@@ -320,5 +337,11 @@ fn navigation_button(
         .on_hover(move |inside| hover(hover_name.clone(), inside))
         .on_click(move |_| Overlay::write().calendar_month += step)
         .align_child(Center, Center)
-        .child(Text::new(icon).size(14.0).font(fonts::NERD).color(theme.text))
+        .child(
+            Text::new(icon)
+                .size(14.0)
+                .font(fonts::NERD)
+                .tight()
+                .color(theme.text),
+        )
 }
