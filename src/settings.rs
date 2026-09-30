@@ -35,14 +35,37 @@ const SECTION_GAP: f32 = 16.0;
 const FOOTER_HEIGHT: f32 = 50.0;
 const FOOTER_GAP: f32 = 10.0;
 
-// below the header, beside the list of pages
-const BODY_HEIGHT: f32 = HEIGHT - MARGIN * 2.0 - HEADER_HEIGHT - HEADER_GAP;
+// the room each part gets in a window of the size the compositor gave
+struct Layout {
+    width: f32,
 
-const CONTENT_WIDTH: f32 = WIDTH - MARGIN * 3.0 - navigation::WIDTH;
+    // below the header, beside the list of pages
+    body_height: f32,
 
-// what is left for the page itself, longer pages scroll inside it
-const SCROLL_HEIGHT: f32 =
-    BODY_HEIGHT - SECTION_HEIGHT - SECTION_GAP - FOOTER_GAP - FOOTER_HEIGHT;
+    content_width: f32,
+
+    // what is left for the page itself, longer pages scroll inside it
+    scroll_height: f32,
+}
+
+impl Layout {
+    // a tiling compositor can give another size than asked for, the opening size counts until it says
+    fn measure() -> Self {
+        let (width, height) = match amane::window_size() {
+            (0.0, _) | (_, 0.0) => (WIDTH, HEIGHT),
+            size => size,
+        };
+
+        let body_height = height - MARGIN * 2.0 - HEADER_HEIGHT - HEADER_GAP;
+
+        Self {
+            width,
+            body_height,
+            content_width: width - MARGIN * 3.0 - navigation::WIDTH,
+            scroll_height: body_height - SECTION_HEIGHT - SECTION_GAP - FOOTER_GAP - FOOTER_HEIGHT,
+        }
+    }
+}
 
 const SETTINGS_ICON: &str = "󰒓";
 const CLOSE_ICON: &str = "󰅖";
@@ -178,6 +201,8 @@ pub fn high_surface(theme: &Theme) -> Color {
 pub fn view() -> Window {
     let theme = theme::current();
 
+    let layout = Layout::measure();
+
     let shown = Shown::read();
 
     let page = shown.page;
@@ -186,19 +211,19 @@ pub fn view() -> Window {
     drop(shown);
 
     let body = Row::new(children![
-        navigation::view(&theme, page, BODY_HEIGHT),
-        content(&theme, page),
+        navigation::view(&theme, page, layout.body_height),
+        content(&theme, page, &layout),
     ])
     .gap(MARGIN);
 
-    let layout = Rectangle::new()
+    let frame = Rectangle::new()
         .width(Parent)
         .height(Parent)
         .fill(theme.background)
         .padding(MARGIN)
-        .child(Column::new(children![header(&theme), body]).gap(HEADER_GAP));
+        .child(Column::new(children![header(&theme, layout.width), body]).gap(HEADER_GAP));
 
-    let mut layers: Vec<Box<dyn Widget>> = vec![Box::new(layout)];
+    let mut layers: Vec<Box<dyn Widget>> = vec![Box::new(frame)];
 
     if let Some(confirm) = confirm {
         layers.push(Box::new(confirm));
@@ -211,7 +236,7 @@ pub fn view() -> Window {
         .child(Stack::new(layers).width(Parent).height(Parent))
 }
 
-fn header(theme: &Theme) -> Row {
+fn header(theme: &Theme, width: f32) -> Row {
     let icon = Rectangle::new()
         .width(40.0)
         .height(40.0)
@@ -250,14 +275,14 @@ fn header(theme: &Theme) -> Row {
         );
 
     Row::new(children![Row::new(children![icon, title]).gap(12.0).align(Center), close])
-        .width(WIDTH - MARGIN * 2.0)
+        .width(width - MARGIN * 2.0)
         .height(HEADER_HEIGHT)
         .justify(SpaceBetween)
         .align(Center)
 }
 
 // the page's title and line, its groups, and apply at the bottom
-fn content(theme: &Theme, shown: Page) -> Column {
+fn content(theme: &Theme, shown: Page, layout: &Layout) -> Column {
     let mut title = "";
     let mut description = "";
 
@@ -283,29 +308,29 @@ fn content(theme: &Theme, shown: Page) -> Column {
     .gap(2.0);
 
     let section = Rectangle::new()
-        .width(CONTENT_WIDTH)
+        .width(layout.content_width)
         .height(SECTION_HEIGHT)
         .child(section);
 
-    let mut page = page::Page::new(theme, CONTENT_WIDTH);
+    let mut page = page::Page::new(theme, layout.content_width);
 
     pages::build(shown, &mut page);
 
     // each page keeps its own scroll position, named by its title
     let scroll = ScrollArea::new(title, page.finish())
-        .width(CONTENT_WIDTH)
-        .height(SCROLL_HEIGHT);
+        .width(layout.content_width)
+        .height(layout.scroll_height);
 
     let scroll = Rectangle::new()
-        .width(CONTENT_WIDTH)
-        .height(SCROLL_HEIGHT + FOOTER_GAP)
+        .width(layout.content_width)
+        .height(layout.scroll_height + FOOTER_GAP)
         .child(scroll);
 
-    Column::new(children![section, scroll, footer(theme)]).gap(SECTION_GAP)
+    Column::new(children![section, scroll, footer(theme, layout.content_width)]).gap(SECTION_GAP)
 }
 
 // "unsaved changes" beside apply, which is faded while there is nothing to apply
-fn footer(theme: &Theme) -> Rectangle {
+fn footer(theme: &Theme, width: f32) -> Rectangle {
     let changed = Settings::read().changed();
 
     let mut items: Vec<Box<dyn Widget>> = Vec::new();
@@ -328,7 +353,7 @@ fn footer(theme: &Theme) -> Rectangle {
     )));
 
     Rectangle::new()
-        .width(CONTENT_WIDTH)
+        .width(width)
         .height(FOOTER_HEIGHT)
         .align_child(End, End)
         .child(Row::new(items).gap(12.0).align(Center))

@@ -323,10 +323,9 @@ fn icon(entry: &Entry, theme: &Theme) -> Rectangle {
         return slot;
     };
 
-    // amane only decodes png and jpeg so far, most svg icons stay empty
     let readable = matches!(
         path.extension().and_then(|extension| extension.to_str()),
-        Some("png" | "jpg" | "jpeg")
+        Some("png" | "jpg" | "jpeg" | "svg")
     );
 
     if !readable {
