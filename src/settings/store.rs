@@ -6,13 +6,14 @@ use std::path::PathBuf;
 use amane::Service;
 
 // every setting and the value it has until changed
-const DEFAULTS: [(&str, &str); 63] = [
+const DEFAULTS: [(&str, &str); 64] = [
     // appearance
     ("blur_strength", "1"),
     ("surface_opacity", "0.94"),
     ("reduce_transparency", "false"),
     // colors
     ("scheme", "dynamic"),
+    ("color_mode", "auto"),
     ("manual_accent", "false"),
     ("accent", "#89b4fa"),
     ("saturation", "1"),
@@ -80,9 +81,14 @@ const DEFAULTS: [(&str, &str); 63] = [
     ("integration_cava", "false"),
 ];
 
-// the shell's settings, kept across restarts as lines like "bar_height=40"
+/*
+ * the shell's settings, kept across restarts as lines like "bar_height=40";
+ * the settings window changes a draft, which the shell only sees once applied
+ */
 pub struct Settings {
     values: HashMap<String, String>,
+
+    draft: HashMap<String, String>,
 }
 
 impl Service for Settings {
@@ -95,6 +101,15 @@ impl Service for Settings {
 
         let saved = fs::read_to_string(path()).unwrap_or_default();
 
+        // the color mode used to have a file of its own
+        let old_mode = fs::read_to_string(old_mode_path()).unwrap_or_default();
+
+        if let Some(slot) = values.get_mut("color_mode") {
+            if matches!(old_mode.trim(), "light" | "dark") {
+                *slot = String::from(old_mode.trim());
+            }
+        }
+
         // keys that are no longer settings are dropped
         for line in saved.lines() {
             let Some((key, value)) = line.split_once('=') else {
@@ -106,7 +121,10 @@ impl Service for Settings {
             }
         }
 
-        Self { values }
+        Self {
+            draft: values.clone(),
+            values,
+        }
     }
 
     // it only changes through input
@@ -114,6 +132,7 @@ impl Service for Settings {
 }
 
 impl Settings {
+    // what the shell uses
     pub fn text(&self, key: &str) -> &str {
         self.values.get(key).expect("failed to find setting: unknown key")
     }
@@ -127,31 +146,73 @@ impl Settings {
         self.text(key).parse().unwrap_or(1.0)
     }
 
-    pub fn set(key: &str, value: impl ToString) {
+    // what the settings window shows, applied or not
+    pub fn staged(&self, key: &str) -> &str {
+        self.draft.get(key).expect("failed to find setting: unknown key")
+    }
+
+    pub fn staged_flag(&self, key: &str) -> bool {
+        self.staged(key) == "true"
+    }
+
+    pub fn staged_number(&self, key: &str) -> f32 {
+        self.staged(key).parse().unwrap_or(1.0)
+    }
+
+    // whether the draft holds something the shell doesn't use yet
+    pub fn changed(&self) -> bool {
+        self.draft != self.values
+    }
+
+    // into the draft only, applied later
+    pub fn stage(key: &str, value: impl ToString) {
         let mut settings = Self::write();
 
-        let slot = settings.values.get_mut(key).expect("failed to find setting: unknown key");
+        let slot = settings.draft.get_mut(key).expect("failed to find setting: unknown key");
 
         *slot = value.to_string();
-
-        settings.save();
     }
 
-    pub fn toggle(key: &str) {
-        let on = Self::read().flag(key);
+    pub fn stage_toggle(key: &str) {
+        let on = Self::read().staged_flag(key);
 
-        Self::set(key, !on);
+        Self::stage(key, !on);
     }
 
-    // every setting back to its default
-    pub fn reset() {
+    // every setting back to its default, still to be applied
+    pub fn stage_defaults() {
         let mut settings = Self::write();
 
         for (key, value) in DEFAULTS {
-            settings.values.insert(String::from(key), String::from(value));
+            settings.draft.insert(String::from(key), String::from(value));
         }
+    }
+
+    // straight to the shell and the file, for switches outside the settings window
+    pub fn set(key: &str, value: impl ToString) {
+        let mut settings = Self::write();
+
+        let value = value.to_string();
+
+        settings.values.insert(String::from(key), value.clone());
+        settings.draft.insert(String::from(key), value);
 
         settings.save();
+    }
+
+    pub fn apply() {
+        let mut settings = Self::write();
+
+        settings.values = settings.draft.clone();
+
+        settings.save();
+    }
+
+    // the draft starts over from what the shell uses
+    pub fn discard() {
+        let mut settings = Self::write();
+
+        settings.draft = settings.values.clone();
     }
 
     // losing the file only means the next start uses the defaults
@@ -169,6 +230,12 @@ impl Settings {
         let _ = fs::create_dir_all(folder);
         let _ = fs::write(&path, text);
     }
+}
+
+fn old_mode_path() -> PathBuf {
+    let home = env::var("HOME").expect("failed to find home: HOME is not set");
+
+    PathBuf::from(format!("{home}/.local/state/amane/mode"))
 }
 
 fn path() -> PathBuf {

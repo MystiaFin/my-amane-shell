@@ -82,6 +82,15 @@ impl Profile {
         });
     }
 
+    // back to no picture, the lock screen shows an icon instead
+    pub fn clear_picture() {
+        let mut profile = Self::write();
+
+        profile.picture = None;
+
+        profile.save();
+    }
+
     // losing the file only means the next start shows the login name and no picture
     fn save(&self) {
         let mut text = format!("name={}\n", self.name);

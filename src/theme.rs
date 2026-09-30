@@ -48,7 +48,7 @@ struct Tuning {
 
 // every color is the wallpaper's darkest or most vivid color, re-lit, unless a fixed scheme is picked
 pub fn current() -> Theme {
-    let light = Mode::read().light;
+    let light = Mode::light();
 
     for_mode(light)
 }

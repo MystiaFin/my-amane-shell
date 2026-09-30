@@ -1,64 +1,24 @@
-use std::env;
-use std::fs;
-use std::path::PathBuf;
-
 use amane::Service;
 
-// light or dark as chosen by hand, none to follow the wallpaper; kept across restarts
-#[derive(Default)]
-pub struct Mode {
-    pub light: Option<bool>,
-}
+use crate::settings::Settings;
 
-impl Service for Mode {
-    fn new() -> Self {
-        let saved = fs::read_to_string(path()).unwrap_or_default();
+// light or dark as chosen by hand, kept with the other settings
+pub struct Mode;
 
-        let light = match saved.trim() {
+impl Mode {
+    // none follows the wallpaper
+    pub fn light() -> Option<bool> {
+        match Settings::read().text("color_mode") {
             "light" => Some(true),
             "dark" => Some(false),
             _ => None,
-        };
-
-        Self { light }
+        }
     }
 
-    // it only changes through input
-    fn listen() {}
-}
-
-impl Mode {
     // flips whatever is showing now, so the first click always changes something
     pub fn toggle(showing_light: bool) {
-        Self::set(Some(!showing_light));
+        let mode = if showing_light { "dark" } else { "light" };
+
+        Settings::set("color_mode", mode);
     }
-
-    // none goes back to following the wallpaper
-    pub fn set(light: Option<bool>) {
-        Self::write().light = light;
-
-        save(light);
-    }
-}
-
-fn save(light: Option<bool>) {
-    let text = match light {
-        Some(true) => "light",
-        Some(false) => "dark",
-        None => "auto",
-    };
-
-    let path = path();
-
-    let folder = path.parent().expect("failed to find the state folder");
-
-    // losing the choice only means the next start follows the wallpaper again
-    let _ = fs::create_dir_all(folder);
-    let _ = fs::write(&path, text);
-}
-
-fn path() -> PathBuf {
-    let home = env::var("HOME").expect("failed to find home: HOME is not set");
-
-    PathBuf::from(format!("{home}/.local/state/amane/mode"))
 }
