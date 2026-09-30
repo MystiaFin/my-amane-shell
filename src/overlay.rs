@@ -1,3 +1,4 @@
+pub mod control_center;
 pub mod launcher;
 mod panel;
 mod popups;
@@ -56,6 +57,10 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     }
 
     if let Some(panel) = launcher::view(&overlay, &theme, screen) {
+        panels.push(panel);
+    }
+
+    if let Some(panel) = control_center::view(&overlay, &theme, screen) {
         panels.push(panel);
     }
 

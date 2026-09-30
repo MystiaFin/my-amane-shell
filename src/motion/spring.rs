@@ -1,4 +1,12 @@
+use std::sync::Mutex;
 use std::time::Instant;
+
+/*
+ * the most time one look at the spring counts; a window that stalls, like
+ * one drawing at a new size for the first time, slows the motion for a
+ * moment instead of skipping most of it
+ */
+const MAX_STEP: f32 = 1.0 / 30.0;
 
 /*
  * a value pulled toward its target by a spring and slowed by damping; unlike
@@ -19,7 +27,33 @@ pub struct Spring {
     velocity: f32,
     target: f32,
 
-    started: Instant,
+    clock: Mutex<Clock>,
+}
+
+// the time since the spring started, counted a capped step at a time
+struct Clock {
+    elapsed: f32,
+    last: Instant,
+}
+
+impl Clock {
+    fn new() -> Self {
+        Self {
+            elapsed: 0.0,
+            last: Instant::now(),
+        }
+    }
+
+    fn advance(&mut self) -> f32 {
+        let now = Instant::now();
+
+        let step = now.duration_since(self.last).as_secs_f32().min(MAX_STEP);
+
+        self.elapsed += step;
+        self.last = now;
+
+        self.elapsed
+    }
 }
 
 impl Spring {
@@ -32,7 +66,7 @@ impl Spring {
             from: value,
             velocity: 0.0,
             target: value,
-            started: Instant::now(),
+            clock: Mutex::new(Clock::new()),
         }
     }
 
@@ -94,7 +128,7 @@ impl Spring {
 
         self.from = position;
         self.velocity = velocity;
-        self.started = Instant::now();
+        *self.clock.get_mut().expect("failed to lock spring clock") = Clock::new();
     }
 
     /*
@@ -102,7 +136,7 @@ impl Spring {
      * it started, so reading it never depends on how often frames are drawn
      */
     fn state(&self) -> (f32, f32) {
-        let time = self.started.elapsed().as_secs_f32();
+        let time = self.clock.lock().expect("failed to lock spring clock").advance();
 
         let offset = self.from - self.target;
         let speed = self.velocity;

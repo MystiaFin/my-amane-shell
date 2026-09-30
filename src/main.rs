@@ -32,6 +32,7 @@ fn main() {
         .window_per_monitor(wallpaper::picker::view)
         .ipc("launcher", overlay::launcher::ipc)
         .ipc("utility", overlay::utility::ipc)
+        .ipc("control", overlay::control_center::ipc)
         .ipc("wallpaper", wallpaper::picker::ipc)
         .run();
 }

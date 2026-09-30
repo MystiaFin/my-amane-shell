@@ -6,6 +6,7 @@ use amane::{
 use super::{pill, ring};
 use crate::clock::Clock;
 use crate::fonts;
+use crate::overlay::Overlay;
 use crate::theme::Theme;
 
 const MEDIA_ICON: &str = "󰎈";
@@ -34,7 +35,7 @@ pub fn view(theme: &Theme, width: f32) -> Row {
         .align(Center)
 }
 
-// the speaker and microphone rings, scroll over one to change its level
+// the speaker and microphone rings, scroll over one to change its level, click to open the control center
 fn audio(theme: &Theme) -> Rectangle {
     let audio = Audio::read();
 
@@ -56,16 +57,12 @@ fn audio(theme: &Theme) -> Rectangle {
     let speaker = Rectangle::new()
         .width(RING_SIZE)
         .height(RING_SIZE)
-        .cursor(Pointer)
-        .on_click(|_| Audio::toggle_mute())
         .on_scroll(scroll_volume)
         .child(ring::view(RING_SIZE, RING_THICKNESS, speaker_value, speaker_color, theme.border));
 
     let microphone = Rectangle::new()
         .width(RING_SIZE)
         .height(RING_SIZE)
-        .cursor(Pointer)
-        .on_click(|_| Audio::toggle_microphone_mute())
         .on_scroll(scroll_microphone)
         .child(ring::view(
             RING_SIZE,
@@ -79,6 +76,8 @@ fn audio(theme: &Theme) -> Rectangle {
     let width = RING_SIZE * 2.0 + 8.0 + 16.0;
 
     pill::view(width, theme.surface)
+        .cursor(Pointer)
+        .on_click(|_| Overlay::toggle_control_center())
         .align_child(Center, Center)
         .child(Row::new(children![speaker, microphone]).gap(8.0).align(Center))
 }

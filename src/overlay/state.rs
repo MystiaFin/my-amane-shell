@@ -18,6 +18,8 @@ pub struct Overlay {
     // leaving a panel for the bar keeps it open
     pub bar_hovered: bool,
 
+    pub control_center: Panel,
+
     pub launcher: Panel,
 
     pub query: String,
@@ -70,6 +72,7 @@ impl Service for Overlay {
             power_menu: Panel::new(),
             action_fills,
             bar_hovered: false,
+            control_center: Panel::new(),
             launcher: Panel::new(),
             query: String::new(),
             selected: 0,
@@ -100,6 +103,7 @@ impl Overlay {
         let mut overlay = Self::write();
 
         overlay.launcher.hide();
+        overlay.control_center.hide();
         utility::close(&mut overlay);
         overlay.power_menu.toggle();
     }
@@ -113,6 +117,7 @@ impl Overlay {
 
         overlay.launcher.hide();
         overlay.power_menu.hide();
+        overlay.control_center.hide();
 
         if overlay.utility.shown {
             utility::close(&mut overlay);
@@ -123,6 +128,27 @@ impl Overlay {
         overlay.utility.show();
 
         utility::opened(&mut overlay);
+    }
+
+    pub fn toggle_control_center() {
+        let mut overlay = Self::write();
+
+        overlay.launcher.hide();
+        overlay.power_menu.hide();
+        utility::close(&mut overlay);
+        overlay.control_center.toggle();
+    }
+
+    pub fn hover_control_center(inside: bool) {
+        let mut overlay = Self::write();
+
+        overlay.control_center.hovered = inside;
+
+        if inside {
+            overlay.control_center.was_hovered = true;
+        }
+
+        overlay.dismiss_if_left();
     }
 
     pub fn hover_power_menu(inside: bool) {
@@ -188,7 +214,7 @@ impl Overlay {
 
         let typing = self.password_for.is_some();
 
-        let mut panels = vec![&mut self.power_menu];
+        let mut panels = vec![&mut self.power_menu, &mut self.control_center];
 
         if !typing {
             panels.push(&mut self.utility);
