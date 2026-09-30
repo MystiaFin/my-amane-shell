@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use amane::Service;
 
-// light or dark as chosen by hand, none to follow the system; kept across restarts
+// light or dark as chosen by hand, none to follow the wallpaper; kept across restarts
 #[derive(Default)]
 pub struct Mode {
     pub light: Option<bool>,
@@ -33,7 +33,7 @@ impl Mode {
         Self::set(Some(!showing_light));
     }
 
-    // none goes back to following the system
+    // none goes back to following the wallpaper
     pub fn set(light: Option<bool>) {
         Self::write().light = light;
 
@@ -52,7 +52,7 @@ fn save(light: Option<bool>) {
 
     let folder = path.parent().expect("failed to find the state folder");
 
-    // losing the choice only means the next start follows the system again
+    // losing the choice only means the next start follows the wallpaper again
     let _ = fs::create_dir_all(folder);
     let _ = fs::write(&path, text);
 }
