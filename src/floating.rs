@@ -21,7 +21,7 @@ use crate::theme::{self, Theme};
 use card::Reading;
 use placement::{Name, Placement, Request};
 use sensors::Sensors;
-use weather::Weather;
+pub use weather::Weather;
 
 const MARGIN: f32 = 36.0;
 const GAP: f32 = 16.0;

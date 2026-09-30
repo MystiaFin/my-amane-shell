@@ -8,6 +8,7 @@ mod integrations;
 mod launcher;
 mod user;
 mod wallpaper;
+mod weather;
 
 pub use user::NAME_INPUT;
 
@@ -25,6 +26,7 @@ pub fn build(shown: Shown, page: &mut Page) {
         Shown::Bar => bar::build(page),
         Shown::Behavior => behavior::build(page),
         Shown::Floating => floating::build(page),
+        Shown::Weather => weather::build(page),
         Shown::Integrations => integrations::build(page),
         Shown::About => about::build(page),
     }

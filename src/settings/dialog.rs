@@ -66,7 +66,7 @@ fn reset(theme: &Theme) -> Rectangle {
     let reset_button = button::view(theme, "Reset", Style::Danger, true, || {
         Settings::stage_defaults();
 
-        field::fill("wallpaper_folder");
+        field::fill();
 
         close();
     });

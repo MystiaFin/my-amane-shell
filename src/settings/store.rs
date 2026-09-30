@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use amane::Service;
 
 // every setting and the value it has until changed
-const DEFAULTS: [(&str, &str); 64] = [
+const DEFAULTS: [(&str, &str); 69] = [
     // appearance
     ("blur_strength", "1"),
     ("surface_opacity", "0.94"),
@@ -71,6 +71,12 @@ const DEFAULTS: [(&str, &str); 64] = [
     ("widget_uv", "true"),
     ("widget_humidity", "true"),
     ("widget_air_quality", "true"),
+    // weather
+    ("weather_place", ""),
+    ("weather_latitude", ""),
+    ("weather_longitude", ""),
+    ("weather_unit", "celsius"),
+    ("weather_minutes", "15"),
     // integrations
     ("integration_gtk", "false"),
     ("integration_terminal", "false"),
@@ -102,12 +108,30 @@ impl Service for Settings {
         let saved = fs::read_to_string(path()).unwrap_or_default();
 
         // the color mode used to have a file of its own
-        let old_mode = fs::read_to_string(old_mode_path()).unwrap_or_default();
+        let old_mode = fs::read_to_string(old_file("mode")).unwrap_or_default();
 
         if let Some(slot) = values.get_mut("color_mode") {
             if matches!(old_mode.trim(), "light" | "dark") {
                 *slot = String::from(old_mode.trim());
             }
+        }
+
+        // so did the weather's location, as lines like "latitude=6.18"
+        let old_weather = fs::read_to_string(old_file("weather")).unwrap_or_default();
+
+        for line in old_weather.lines() {
+            let Some((name, value)) = line.split_once('=') else {
+                continue;
+            };
+
+            let key = match name.trim() {
+                "name" => "weather_place",
+                "latitude" => "weather_latitude",
+                "longitude" => "weather_longitude",
+                _ => continue,
+            };
+
+            values.insert(String::from(key), String::from(value.trim()));
         }
 
         // keys that are no longer settings are dropped
@@ -232,10 +256,11 @@ impl Settings {
     }
 }
 
-fn old_mode_path() -> PathBuf {
+// where a setting lived before it moved in here
+fn old_file(name: &str) -> PathBuf {
     let home = env::var("HOME").expect("failed to find home: HOME is not set");
 
-    PathBuf::from(format!("{home}/.local/state/amane/mode"))
+    PathBuf::from(format!("{home}/.local/state/amane/{name}"))
 }
 
 fn path() -> PathBuf {

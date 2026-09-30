@@ -57,12 +57,13 @@ pub enum Page {
     Bar,
     Behavior,
     Floating,
+    Weather,
     Integrations,
     About,
 }
 
 // every page in the list's order, with its icon, label and the line under its title
-const PAGES: [(Page, &str, &str, &str); 10] = [
+const PAGES: [(Page, &str, &str, &str); 11] = [
     (Page::User, "󰀄", "User info", "Choose the name and profile picture shown on the lock screen."),
     (Page::Appearance, "󰍹", "Appearance", "Tune the shell's surfaces and blur."),
     (
@@ -100,6 +101,12 @@ const PAGES: [(Page, &str, &str, &str); 10] = [
         "󰖲",
         "Floating widgets",
         "Control desktop-only visibility, placement, scale, opacity, and cards.",
+    ),
+    (
+        Page::Weather,
+        "󰖐",
+        "Weather",
+        "Choose where the weather comes from and how it reads.",
     ),
     (
         Page::Integrations,
@@ -368,7 +375,7 @@ pub fn open() {
 
     TextInput::set_text(pages::NAME_INPUT, &typed_name);
 
-    field::fill("wallpaper_folder");
+    field::fill();
 
     {
         let mut shown = Shown::write();

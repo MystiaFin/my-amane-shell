@@ -38,9 +38,19 @@ pub fn view(page: &Page, title: &str, detail: &str, input: TextInput) -> Rectang
     row::view(page.theme, page.width, row::TALL_HEIGHT, title, detail, field, width)
 }
 
-// the field shows the draft, not what was typed before it was thrown away
-pub fn fill(key: &'static str) {
-    let staged = String::from(Settings::read().staged(key));
+// every setting that is typed, which the fields are named after
+const KEYS: [&str; 4] = [
+    "wallpaper_folder",
+    "weather_place",
+    "weather_latitude",
+    "weather_longitude",
+];
 
-    TextInput::set_text(key, &staged);
+// the fields show the draft, not what was typed before it was thrown away
+pub fn fill() {
+    let settings = Settings::read();
+
+    for key in KEYS {
+        TextInput::set_text(key, settings.staged(key));
+    }
 }

@@ -1,14 +1,22 @@
 mod csv;
 
 use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use amane::Service;
 
+use crate::settings::Settings;
+
 const FORECAST: &str = "https://api.open-meteo.com/v1/forecast";
 const AIR_QUALITY: &str = "https://air-quality-api.open-meteo.com/v1/air-quality";
+
+// how often the loop looks at the settings and the refresh button between polls
+const CHECK: Duration = Duration::from_secs(1);
+
+// set by the refresh button, the next check asks at once
+static REFRESH: AtomicBool = AtomicBool::new(false);
 
 // the latest reading for the saved location, empty until the first answer
 #[derive(Default, PartialEq)]
@@ -38,24 +46,40 @@ impl Service for Weather {
         Self::default()
     }
 
-    fn interval() -> Duration {
-        Duration::from_secs(15 * 60)
-    }
-
+    // asks again once the interval is up, the location or unit changes, or refresh is pressed
     fn listen() {
         loop {
-            let fresh = fetch();
+            let asked = request();
+
+            let fresh = fetch(&asked);
 
             if *Self::read() != fresh {
                 *Self::write() = fresh;
             }
 
-            std::thread::sleep(Self::interval());
+            let started = Instant::now();
+
+            loop {
+                thread::sleep(CHECK);
+
+                let minutes = Settings::read().number("weather_minutes").max(1.0);
+
+                let due = started.elapsed().as_secs_f32() >= minutes * 60.0;
+
+                if due || request() != asked || REFRESH.swap(false, Ordering::Relaxed) {
+                    break;
+                }
+            }
         }
     }
 }
 
 impl Weather {
+    // from the settings' refresh button
+    pub fn refresh() {
+        REFRESH.store(true, Ordering::Relaxed);
+    }
+
     pub fn condition(&self) -> &'static str {
         match self.code {
             Some(0) => "Clear sky",
@@ -94,15 +118,22 @@ impl Weather {
     }
 }
 
-// the saved location, like "latitude=-6.2" on its own line
+// where to ask about and in which unit, as the settings say
+#[derive(PartialEq)]
+struct Request {
+    location: Option<Location>,
+    fahrenheit: bool,
+}
+
+#[derive(PartialEq)]
 struct Location {
     latitude: String,
     longitude: String,
     name: String,
 }
 
-fn fetch() -> Weather {
-    let Some(location) = location() else {
+fn fetch(request: &Request) -> Weather {
+    let Some(location) = &request.location else {
         return Weather {
             place: String::from("Set a location"),
             ..Weather::default()
@@ -111,9 +142,12 @@ fn fetch() -> Weather {
 
     let coordinates = format!("latitude={}&longitude={}", location.latitude, location.longitude);
 
+    let unit = if request.fahrenheit { "fahrenheit" } else { "celsius" };
+
     let forecast = get(&format!(
         "{FORECAST}?{coordinates}&current=temperature_2m,relative_humidity_2m,weather_code,uv_index\
-         &daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto&format=csv"
+         &daily=temperature_2m_max,temperature_2m_min&temperature_unit={unit}\
+         &forecast_days=1&timezone=auto&format=csv"
     ));
 
     let air = get(&format!("{AIR_QUALITY}?{coordinates}&current=us_aqi&format=csv"));
@@ -121,7 +155,7 @@ fn fetch() -> Weather {
     let number = |values: &HashMap<String, String>, name: &str| values.get(name)?.parse().ok();
 
     Weather {
-        place: location.name,
+        place: location.name.clone(),
         temperature: number(&forecast, "temperature_2m"),
         high: number(&forecast, "temperature_2m_max"),
         low: number(&forecast, "temperature_2m_min"),
@@ -139,31 +173,36 @@ fn get(url: &str) -> HashMap<String, String> {
     csv::values(&text)
 }
 
-fn location() -> Option<Location> {
-    let home = env::var("HOME").ok()?;
-
-    let saved = fs::read_to_string(format!("{home}/.local/state/amane/weather")).ok()?;
-
-    let mut values = HashMap::new();
-
-    for line in saved.lines() {
-        if let Some((name, value)) = line.split_once('=') {
-            values.insert(name.trim(), value.trim());
-        }
-    }
+fn request() -> Request {
+    let settings = Settings::read();
 
     // the coordinates go into a shell command, so only numbers are let through
-    let number = |name: &str| {
-        let value = values.get(name)?;
+    let number = |key: &str| {
+        let value = settings.text(key).trim();
 
         value.parse::<f64>().ok()?;
 
-        Some(String::from(*value))
+        Some(String::from(value))
     };
 
-    Some(Location {
-        latitude: number("latitude")?,
-        longitude: number("longitude")?,
-        name: String::from(*values.get("name").unwrap_or(&"Weather")),
-    })
+    let location = match (number("weather_latitude"), number("weather_longitude")) {
+        (Some(latitude), Some(longitude)) => {
+            let name = settings.text("weather_place").trim();
+
+            let name = if name.is_empty() { "Weather" } else { name };
+
+            Some(Location {
+                latitude,
+                longitude,
+                name: String::from(name),
+            })
+        }
+
+        _ => None,
+    };
+
+    Request {
+        location,
+        fahrenheit: settings.text("weather_unit") == "fahrenheit",
+    }
 }
