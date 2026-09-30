@@ -10,6 +10,9 @@ pub enum Kind {
     // its place in Apps::list()
     App(usize),
 
+    // opens the settings window
+    Settings,
+
     // switches the search to tmux sessions
     TmuxCommand,
 
@@ -72,17 +75,26 @@ fn apps(search: &str) -> Vec<Entry> {
 
 // only the commands that lead somewhere yet
 fn commands(search: &str) -> Vec<Entry> {
-    let name = "Tmux sessions";
+    let all = [
+        ("Settings", "\u{f0493}", Kind::Settings),
+        ("Tmux sessions", "\u{f018d}", Kind::TmuxCommand),
+    ];
 
-    if !name.to_lowercase().contains(search) {
-        return Vec::new();
+    let mut found = Vec::new();
+
+    for (name, glyph, kind) in all {
+        if !name.to_lowercase().contains(search) {
+            continue;
+        }
+
+        found.push(Entry {
+            name: String::from(name),
+            glyph: Some(glyph),
+            kind,
+        });
     }
 
-    vec![Entry {
-        name: String::from(name),
-        glyph: Some("\u{f018d}"),
-        kind: Kind::TmuxCommand,
-    }]
+    found
 }
 
 fn tmux(search: &str, sessions: &[String]) -> Vec<Entry> {

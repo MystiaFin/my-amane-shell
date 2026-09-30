@@ -5,6 +5,7 @@ mod liquid;
 mod motion;
 mod overlay;
 mod screen_mask;
+mod settings;
 mod theme;
 mod wallpaper;
 
@@ -33,6 +34,7 @@ fn main() {
         .ipc("launcher", overlay::launcher::ipc)
         .ipc("utility", overlay::utility::ipc)
         .ipc("control", overlay::control_center::ipc)
+        .ipc("settings", settings::ipc)
         .ipc("wallpaper", wallpaper::picker::ipc)
         .run();
 }

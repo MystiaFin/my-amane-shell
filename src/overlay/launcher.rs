@@ -475,6 +475,12 @@ fn launch_selected() {
             overlay.launcher.hide();
         }
 
+        Kind::Settings => {
+            overlay.launcher.hide();
+
+            amane::open_window(crate::settings::view);
+        }
+
         Kind::TmuxCommand => {
             overlay.query = String::from("!");
             overlay.sessions = results::read_sessions();

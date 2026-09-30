@@ -30,13 +30,18 @@ impl Service for Mode {
 impl Mode {
     // flips whatever is showing now, so the first click always changes something
     pub fn toggle(showing_light: bool) {
-        set(Some(!showing_light));
+        Self::set(Some(!showing_light));
+    }
+
+    // none goes back to following the system
+    pub fn set(light: Option<bool>) {
+        Self::write().light = light;
+
+        save(light);
     }
 }
 
-fn set(light: Option<bool>) {
-    Mode::write().light = light;
-
+fn save(light: Option<bool>) {
     let text = match light {
         Some(true) => "light",
         Some(false) => "dark",
