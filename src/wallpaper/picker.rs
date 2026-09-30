@@ -30,11 +30,14 @@ const VISIBLE_CARDS: f32 = 7.0;
 const OVERHANG: f32 = 0.12;
 
 /*
- * the band's wallpaper is kept this many times smaller and stretched back
- * up, which smooths it like a blur; a real blur of the band each frame
+ * the band's wallpaper is kept this many times smaller, blurred once while
+ * it decodes, and stretched back up; a real blur of the band each frame
  * took about 45 ms on the laptop's intel gpu
  */
 const BLUR_SHRINK: f32 = 12.0;
+
+// in the small copy's pixels, so about BLUR_SHRINK times wider on screen
+const BLUR_RADIUS: u32 = 2;
 
 const TINT: f32 = 0.48;
 
@@ -68,7 +71,9 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     let blurred_width = (screen_width / BLUR_SHRINK) as u32;
     let blurred_height = (screen_height / BLUR_SHRINK) as u32;
 
-    let blurred = Image::cover(&Wallpaper::read().shown).thumbnail(blurred_width, blurred_height);
+    let blurred = Image::cover(&Wallpaper::read().shown)
+        .thumbnail(blurred_width, blurred_height)
+        .blurred(BLUR_RADIUS);
 
     let backdrop = Rectangle::new()
         .width(screen_width)
