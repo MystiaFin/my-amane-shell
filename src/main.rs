@@ -1,5 +1,6 @@
 mod bar;
 mod clock;
+mod floating;
 mod fonts;
 mod liquid;
 mod lock_screen;
@@ -32,6 +33,8 @@ fn main() {
     App::new()
         .font(fonts::BODY)
         .window_per_monitor(wallpaper::view)
+        // over the wallpaper, under everything else
+        .window_per_monitor(floating::view)
         // made before the bar and panels, so it sits under them in the same layer
         .window_per_monitor(screen_mask::view)
         .window_per_monitor(bar::view)
