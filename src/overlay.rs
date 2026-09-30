@@ -1,5 +1,6 @@
 pub mod launcher;
 mod panel;
+mod popups;
 pub mod power_menu;
 mod region;
 mod state;
@@ -59,6 +60,10 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     }
 
     if let Some(panel) = utility::view(&overlay, &theme, screen) {
+        panels.push(panel);
+    }
+
+    if let Some(panel) = popups::view(&overlay, &theme, screen) {
         panels.push(panel);
     }
 

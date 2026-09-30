@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use amane::{
-    Apps, Center, Column, Image, Notification, Notifications, Padding, Parent, Pointer,
+    Apps, Center, Color, Column, Image, Notification, Notifications, Padding, Parent, Pointer,
     Rectangle, Row, ScrollArea, Service, Size, SpaceBetween, Stack, Start, Text, Weight, Widget,
     children,
 };
@@ -19,23 +19,57 @@ const TITLE_HEIGHT: f32 = 30.0;
 
 const GAP: f32 = 10.0;
 
-const CARD_PADDING: Padding = Padding {
-    top: 10.0,
-    right: 36.0,
-    bottom: 10.0,
-    left: 12.0,
+// what sets a card in the list apart from one popping up at the screen's edge
+pub struct CardStyle {
+    pub padding: Padding,
+    pub radius: f32,
+
+    // a shorter card grows to this, its content centered
+    pub min_height: f32,
+
+    pub icon_size: f32,
+    pub icon_margin: f32,
+    pub icon_radius: f32,
+    pub icon_gap: f32,
+    pub bell_size: f32,
+
+    pub text_gap: f32,
+    pub summary_size: f32,
+
+    pub close_size: f32,
+    pub close_inset: f32,
+    pub close_glyph_size: f32,
+    pub close: fn(u32),
+
+    /*
+     * a popup names the app above the summary and centers its icon;
+     * a card in the list says the app and the time below
+     */
+    pub popup: bool,
+}
+
+const LIST_CARD: CardStyle = CardStyle {
+    padding: Padding {
+        top: 10.0,
+        right: 36.0,
+        bottom: 10.0,
+        left: 12.0,
+    },
+    radius: 16.0,
+    min_height: 0.0,
+    icon_size: 38.0,
+    icon_margin: 7.0,
+    icon_radius: 8.0,
+    icon_gap: 10.0,
+    bell_size: 17.0,
+    text_gap: 2.0,
+    summary_size: 13.0,
+    close_size: 15.0,
+    close_inset: 12.0,
+    close_glyph_size: 15.0,
+    close: Notifications::dismiss,
+    popup: false,
 };
-
-const CARD_RADIUS: f32 = 16.0;
-
-const ICON_SIZE: f32 = 38.0;
-const ICON_MARGIN: f32 = 7.0;
-const ICON_GAP: f32 = 10.0;
-
-const TEXT_GAP: f32 = 2.0;
-
-const CLOSE_SIZE: f32 = 15.0;
-const CLOSE_INSET: f32 = 12.0;
 
 const BUTTON_HEIGHT: f32 = 26.0;
 const BUTTON_PADDING: f32 = 9.0;
@@ -118,7 +152,7 @@ fn list(
     let mut total = 0.0;
 
     for notification in notifications.list().iter().rev() {
-        let (card, card_height) = card(overlay, theme, notification, width);
+        let (card, card_height) = card(overlay, theme, notification, width, &LIST_CARD);
 
         total += card_height;
 
@@ -133,38 +167,57 @@ fn list(
 }
 
 // the icon beside the text, the buttons under both, and a close button in the corner
-fn card(overlay: &Overlay, theme: &Theme, notification: &Notification, width: f32) -> (Stack, f32) {
-    let inner_width = width - CARD_PADDING.left - CARD_PADDING.right;
+pub fn card(
+    overlay: &Overlay,
+    theme: &Theme,
+    notification: &Notification,
+    width: f32,
+    style: &CardStyle,
+) -> (Stack, f32) {
+    let padding = style.padding;
 
-    let text_width = inner_width - ICON_SIZE - ICON_GAP;
+    let inner_width = width - padding.left - padding.right;
 
-    let (text, text_height) = text_column(theme, notification, text_width);
+    let text_width = inner_width - style.icon_size - style.icon_gap;
 
-    let top_height = f32::max(ICON_SIZE, text_height);
+    let (text, text_height) = text_column(theme, notification, text_width, style);
 
-    let top = Row::new(children![icon(theme, notification), text])
+    let top_height = f32::max(style.icon_size, text_height);
+
+    let mut top = Row::new(children![icon(theme, notification, style), text])
         .height(top_height)
-        .gap(ICON_GAP);
+        .gap(style.icon_gap);
+
+    // a popup centers its icon beside the text
+    if style.popup {
+        top = top.align(Center);
+    }
 
     let mut rows: Vec<Box<dyn Widget>> = vec![Box::new(top)];
 
     let mut inner_height = top_height;
 
     if !notification.actions().is_empty() {
-        rows.push(Box::new(actions(overlay, theme, notification)));
+        rows.push(Box::new(actions(overlay, theme, notification, style)));
 
         inner_height += ACTIONS_GAP + BUTTON_HEIGHT;
     }
 
-    let height = CARD_PADDING.top + inner_height + CARD_PADDING.bottom;
+    let fitted_height = padding.top + inner_height + padding.bottom;
+
+    let height = f32::max(style.min_height, fitted_height);
+
+    // what the minimum height adds, half of it above the content
+    let centering = (height - fitted_height) / 2.0;
 
     let body = Rectangle::new()
         .width(width)
         .height(height)
-        .radius(CARD_RADIUS)
+        .radius(style.radius)
         .fill(theme.surface)
-        .padding(CARD_PADDING)
-        .child(Column::new(rows).gap(ACTIONS_GAP));
+        .padding(padding)
+        .align_child(Start, Center)
+        .child(Column::new(rows).height(inner_height).gap(ACTIONS_GAP));
 
     let mut layers: Vec<Box<dyn Widget>> = vec![Box::new(body)];
 
@@ -174,36 +227,46 @@ fn card(overlay: &Overlay, theme: &Theme, notification: &Notification, width: f3
 
         let click = Rectangle::new()
             .width(width)
-            .height(CARD_PADDING.top + top_height)
+            .height(padding.top + centering + top_height)
             .cursor(Pointer)
             .on_click(move |_| Notifications::click(id));
 
         layers.push(Box::new(click));
     }
 
-    layers.push(Box::new(close_button(overlay, theme, notification.id(), width)));
+    let close = close_button(overlay, theme, notification.id(), width, style);
+
+    layers.push(Box::new(close));
 
     (Stack::new(layers).width(width).height(height), height)
 }
 
 // the summary, up to two lines of body, then which app sent it and when
-fn text_column(theme: &Theme, notification: &Notification, width: f32) -> (Column, f32) {
+fn text_column(
+    theme: &Theme,
+    notification: &Notification,
+    width: f32,
+    style: &CardStyle,
+) -> (Column, f32) {
     let summary = Text::new(notification.summary())
-        .size(13.0)
+        .size(style.summary_size)
         .font(fonts::BODY)
         .weight(Weight::SemiBold)
         .color(theme.text)
         .elide();
 
-    let received = Clock::read().hours_minutes(notification.received());
-
-    let source = Text::new(format!("{}  •  {received}", notification.app_name()))
-        .size(9.0)
-        .font(fonts::BODY)
-        .color(theme.secondary_text)
-        .elide();
-
     let mut parts: Vec<(Text, f32)> = Vec::new();
+
+    if style.popup {
+        let app = Text::new(notification.app_name())
+            .size(9.0)
+            .font(fonts::BODY)
+            .weight(Weight::SemiBold)
+            .color(theme.accent)
+            .elide();
+
+        parts.push(fitted(app, width));
+    }
 
     parts.push(fitted(summary, width));
 
@@ -221,7 +284,17 @@ fn text_column(theme: &Theme, notification: &Notification, width: f32) -> (Colum
         parts.push(fitted(body, width));
     }
 
-    parts.push(fitted(source, width));
+    if !style.popup {
+        let received = Clock::read().hours_minutes(notification.received());
+
+        let source = Text::new(format!("{}  •  {received}", notification.app_name()))
+            .size(9.0)
+            .font(fonts::BODY)
+            .color(theme.secondary_text)
+            .elide();
+
+        parts.push(fitted(source, width));
+    }
 
     let mut rows: Vec<Box<dyn Widget>> = Vec::new();
     let mut total = 0.0;
@@ -232,9 +305,9 @@ fn text_column(theme: &Theme, notification: &Notification, width: f32) -> (Colum
         rows.push(Box::new(Rectangle::new().width(width).height(height).child(text)));
     }
 
-    total += TEXT_GAP * (rows.len() - 1) as f32;
+    total += style.text_gap * (rows.len() - 1) as f32;
 
-    (Column::new(rows).width(width).height(total).gap(TEXT_GAP), total)
+    (Column::new(rows).width(width).height(total).gap(style.text_gap), total)
 }
 
 fn fitted(text: Text, width: f32) -> (Text, f32) {
@@ -244,17 +317,17 @@ fn fitted(text: Text, width: f32) -> (Text, f32) {
 }
 
 // the sender's icon when one can be found, a bell otherwise
-fn icon(theme: &Theme, notification: &Notification) -> Rectangle {
+fn icon(theme: &Theme, notification: &Notification, style: &CardStyle) -> Rectangle {
     let slot = Rectangle::new()
-        .width(ICON_SIZE)
-        .height(ICON_SIZE)
-        .radius(8.0)
+        .width(style.icon_size)
+        .height(style.icon_size)
+        .radius(style.icon_radius)
         .fill(theme.selected_surface)
         .align_child(Center, Center);
 
     let Some(path) = icon_path(notification) else {
         let bell = Text::new(BELL_ICON)
-            .size(17.0)
+            .size(style.bell_size)
             .font(fonts::NERD)
             .tight()
             .color(theme.accent);
@@ -262,7 +335,7 @@ fn icon(theme: &Theme, notification: &Notification) -> Rectangle {
         return slot.child(bell);
     };
 
-    let inner = ICON_SIZE - ICON_MARGIN * 2.0;
+    let inner = style.icon_size - style.icon_margin * 2.0;
 
     // twice the size, so it stays sharp on a scaled screen
     let pixels = (inner * 2.0) as u32;
@@ -318,7 +391,12 @@ fn find_icon(notification: &Notification) -> Option<PathBuf> {
 }
 
 // one button for each action the sender offered
-fn actions(overlay: &Overlay, theme: &Theme, notification: &Notification) -> Rectangle {
+fn actions(
+    overlay: &Overlay,
+    theme: &Theme,
+    notification: &Notification,
+    style: &CardStyle,
+) -> Rectangle {
     let mut buttons: Vec<Box<dyn Widget>> = Vec::new();
 
     for action in notification.actions() {
@@ -359,30 +437,50 @@ fn actions(overlay: &Overlay, theme: &Theme, notification: &Notification) -> Rec
             top: 0.0,
             right: 0.0,
             bottom: 0.0,
-            left: ICON_SIZE + ICON_GAP,
+            left: style.icon_size + style.icon_gap,
         })
         .child(buttons)
 }
 
-fn close_button(overlay: &Overlay, theme: &Theme, id: u32, card_width: f32) -> Rectangle {
+fn close_button(
+    overlay: &Overlay,
+    theme: &Theme,
+    id: u32,
+    card_width: f32,
+    style: &CardStyle,
+) -> Rectangle {
     let hover_name = format!("notification:{id}:close");
 
     let amount = motion::fade(&hover_name, fade_target(overlay, &hover_name));
 
     let glyph = Text::new(CLOSE_ICON)
-        .size(15.0)
+        .size(style.close_glyph_size)
         .font(fonts::NERD)
         .tight()
         .color(theme::mix(theme.muted_text, theme.danger, amount));
 
+    // a popup's button also lights up behind the glyph
+    let backdrop = if style.popup {
+        theme::mix(Color::TRANSPARENT, theme.border, amount)
+    } else {
+        Color::TRANSPARENT
+    };
+
+    let size = style.close_size;
+    let inset = style.close_inset;
+
+    let close = style.close;
+
     Rectangle::new()
-        .width(CLOSE_SIZE)
-        .height(CLOSE_SIZE)
-        .translate(card_width - CLOSE_INSET - CLOSE_SIZE, CLOSE_INSET)
+        .width(size)
+        .height(size)
+        .translate(card_width - inset - size, inset)
+        .radius(8.0)
+        .fill(backdrop)
         .align_child(Center, Center)
         .cursor(Pointer)
         .on_hover(move |inside| hover(hover_name.clone(), inside))
-        .on_click(move |_| Notifications::dismiss(id))
+        .on_click(move |_| close(id))
         .child(glyph)
 }
 

@@ -2,7 +2,7 @@ mod bluetooth;
 mod brightness;
 mod calendar;
 mod header;
-mod notifications;
+pub mod notifications;
 mod switch;
 mod tabs;
 mod wifi;

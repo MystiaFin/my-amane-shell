@@ -1,4 +1,4 @@
-use amane::Service;
+use amane::{Notification, Notifications, Service};
 
 use super::panel::Panel;
 use super::utility::{self, Page};
@@ -50,6 +50,12 @@ pub struct Overlay {
 
     // the network last asked to join, shown as connecting until it is up
     pub joining: Option<String>,
+
+    // the popup under the pointer, whose countdown waits
+    pub hovered_popup: Option<u32>,
+
+    // popups closed by hand, which leave before their time
+    pub closed_popups: Vec<u32>,
 }
 
 impl Service for Overlay {
@@ -79,6 +85,8 @@ impl Service for Overlay {
             show_password: false,
             joining: None,
             calendar_month: 0,
+            hovered_popup: None,
+            closed_popups: Vec::new(),
         }
     }
 
@@ -139,6 +147,28 @@ impl Overlay {
         }
 
         overlay.dismiss_if_left();
+    }
+
+    pub fn hover_popup(id: u32, inside: bool) {
+        let mut overlay = Self::write();
+
+        if inside {
+            overlay.hovered_popup = Some(id);
+        } else if overlay.hovered_popup == Some(id) {
+            overlay.hovered_popup = None;
+        }
+    }
+
+    // only the popup goes, the notification stays in the list
+    pub fn close_popup(id: u32) {
+        let listed: Vec<u32> = Notifications::read().list().iter().map(Notification::id).collect();
+
+        let mut overlay = Self::write();
+
+        // ids of notifications already gone are dropped, so the list stays short
+        overlay.closed_popups.retain(|closed| listed.contains(closed));
+
+        overlay.closed_popups.push(id);
     }
 
     pub fn hover_bar(inside: bool) {
