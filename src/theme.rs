@@ -217,17 +217,6 @@ fn luminance(color: Color) -> f32 {
     linear(color.red()) * 0.2126 + linear(color.green()) * 0.7152 + linear(color.blue()) * 0.0722
 }
 
-// how solid panels are drawn, fully solid while transparency is reduced
-pub fn surface_opacity() -> f32 {
-    let settings = Settings::read();
-
-    if settings.flag("reduce_transparency") {
-        return 1.0;
-    }
-
-    settings.number("surface_opacity")
-}
-
 pub fn with_opacity(color: Color, opacity: f32) -> Color {
     let alpha = (opacity * 255.0).round() as u8;
 

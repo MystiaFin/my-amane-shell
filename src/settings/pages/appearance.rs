@@ -16,24 +16,11 @@ pub fn build(page: &mut Page) {
         },
     );
 
-    slider::add(
-        page,
-        "surface_opacity",
-        "Surface opacity",
-        "Make shell surfaces more or less transparent",
-        Range {
-            min: 0.6,
-            max: 1.0,
-            step: 0.02,
-            label: slider::plain,
-        },
-    );
-
     switch::add(
         page,
         "reduce_transparency",
         "Reduce transparency",
-        "Force opaque surfaces and disable wallpaper blur",
+        "Solid wallpaper picker background with no blur",
     );
 
     page.end_group();

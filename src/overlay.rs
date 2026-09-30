@@ -113,8 +113,6 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         screen_height: screen.height,
     };
 
-    let surface = theme::with_opacity(theme.background, theme::surface_opacity());
-
     let margin = Margin {
         top: reach.y as i32,
         right: 0,
@@ -133,7 +131,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .keyboard(keyboard)
         .on_key(key_pressed)
         .input_region(areas)
-        .child(liquid::view(surface, blobs, placement))
+        .child(liquid::view(theme.background, blobs, placement))
 }
 
 // only one panel is out at a time, so only one of these acts on the key
