@@ -54,6 +54,12 @@ pub struct Overlay {
     pub joining: Option<String>,
 
     // the popup under the pointer, whose countdown waits
+    // the media player the control center shows, by bus name; none shows the active one
+    pub player: Option<String>,
+
+    // slides the media card in from the side it was switched toward, 0 once settled
+    pub player_switch: Glide,
+
     pub hovered_popup: Option<u32>,
 
     // popups closed by hand, which leave before their time
@@ -88,6 +94,8 @@ impl Service for Overlay {
             show_password: false,
             joining: None,
             calendar_month: 0,
+            player: None,
+            player_switch: motion::spatial(0.0, motion::FAST_SPATIAL),
             hovered_popup: None,
             closed_popups: Vec::new(),
         }

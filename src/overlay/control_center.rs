@@ -2,6 +2,7 @@ mod art;
 mod cava;
 mod fader;
 mod media;
+mod player;
 mod visualizer;
 mod wave;
 
@@ -12,8 +13,8 @@ use crate::liquid::{self, Blob};
 use crate::theme::Theme;
 
 const MAX_WIDTH: f32 = 780.0;
-// 350 tall on screen, plus what hides past the top edge
-const HEIGHT: f32 = 350.0 + EDGE_OVERLAP;
+// 276 tall on screen, just enough for the media card's details, plus what hides past the top edge
+const HEIGHT: f32 = 276.0 + EDGE_OVERLAP;
 const RADIUS: f32 = 30.0;
 
 /*

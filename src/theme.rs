@@ -1,11 +1,13 @@
 mod hsl;
 mod mode;
+mod system;
 
 use amane::{Color, Palette, Service};
 
 use hsl::Hsl;
 
 pub use mode::Mode;
+use system::System;
 
 // no tone gets more saturated than this
 const MAX_SATURATION: f32 = 0.82;
@@ -39,7 +41,11 @@ pub struct Theme {
 pub fn current() -> Theme {
     let palette = Palette::read();
 
-    let light = Mode::read().light.unwrap_or(palette.light());
+    // a choice made by hand wins, then the desktop's preference, then the wallpaper
+    let light = Mode::read()
+        .light
+        .or(System::read().light)
+        .unwrap_or(palette.light());
 
     let base = palette.background();
     let seed = palette.accent();

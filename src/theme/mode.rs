@@ -1,6 +1,10 @@
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+
 use amane::Service;
 
-// light or dark as chosen in the utility center, none to follow the wallpaper
+// light or dark as chosen by hand, none to follow the system; kept across restarts
 #[derive(Default)]
 pub struct Mode {
     pub light: Option<bool>,
@@ -8,7 +12,15 @@ pub struct Mode {
 
 impl Service for Mode {
     fn new() -> Self {
-        Self::default()
+        let saved = fs::read_to_string(path()).unwrap_or_default();
+
+        let light = match saved.trim() {
+            "light" => Some(true),
+            "dark" => Some(false),
+            _ => None,
+        };
+
+        Self { light }
     }
 
     // it only changes through input
@@ -18,6 +30,30 @@ impl Service for Mode {
 impl Mode {
     // flips whatever is showing now, so the first click always changes something
     pub fn toggle(showing_light: bool) {
-        Self::write().light = Some(!showing_light);
+        set(Some(!showing_light));
     }
+}
+
+fn set(light: Option<bool>) {
+    Mode::write().light = light;
+
+    let text = match light {
+        Some(true) => "light",
+        Some(false) => "dark",
+        None => "auto",
+    };
+
+    let path = path();
+
+    let folder = path.parent().expect("failed to find the state folder");
+
+    // losing the choice only means the next start follows the system again
+    let _ = fs::create_dir_all(folder);
+    let _ = fs::write(&path, text);
+}
+
+fn path() -> PathBuf {
+    let home = env::var("HOME").expect("failed to find home: HOME is not set");
+
+    PathBuf::from(format!("{home}/.local/state/amane/mode"))
 }
