@@ -178,7 +178,7 @@ fn recolor_foot(theme: &Theme, colors: &Colors, folder: &str) {
     let script = format!(
         "pkill {signal} -x foot 2>/dev/null; sleep 0.05; seen=' '; \
          for environment in /proc/[0-9]*/environ; do \
-         if tr '\\0' '\\n' < \"$environment\" 2>/dev/null | grep -qx 'TERM=foot'; then \
+         if tr '\\0' '\\n' 2>/dev/null < \"$environment\" | grep -qx 'TERM=foot'; then \
          process=${{environment%/environ}}; tty=$(readlink \"$process/fd/1\" 2>/dev/null); \
          case \"$tty\" in /dev/pts/[0-9]*) \
          case \"$seen\" in *\" $tty \"*) ;; *) \
