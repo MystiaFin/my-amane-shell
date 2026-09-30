@@ -17,7 +17,6 @@ pub const HEIGHT: f32 = 40.0;
 
 const CORNER_RADIUS: f32 = 16.0;
 
-// the height of every pill and ring row inside the bar
 pub const ITEM_HEIGHT: f32 = 26.0;
 
 pub fn view(monitor: &Monitor) -> LayerWindow {
