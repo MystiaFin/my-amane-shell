@@ -1,11 +1,12 @@
 use amane::{
     Center, Color, Full, Monitor, Parent, Pointer, Rectangle, Row, Service, Stack, Start, Text,
-    Weight, Widget, Workspace, Workspaces, children,
+    Weight, Widget, Workspace, Workspaces,
 };
 
 use super::{motion, star};
 use crate::fonts;
 use crate::overlay::Overlay;
+use crate::settings::Settings;
 use crate::theme::Theme;
 
 // the logo and the inactive dot, the active star is drawn in star.rs
@@ -49,12 +50,21 @@ pub fn view(monitor: &Monitor, theme: &Theme, width: f32) -> Row {
         .weight(Weight::Medium)
         .color(theme.text);
 
-    let items: Vec<Box<dyn Widget>> = vec![
-        Box::new(Rectangle::new().width(EDGE).height(1.0)),
-        Box::new(logo),
-        Box::new(strip(monitor, &own, theme)),
-        Box::new(name),
-    ];
+    let settings = Settings::read();
+
+    let mut items: Vec<Box<dyn Widget>> = vec![Box::new(Rectangle::new().width(EDGE).height(1.0))];
+
+    if settings.flag("bar_logo") {
+        items.push(Box::new(logo));
+    }
+
+    if settings.flag("bar_workspaces") {
+        items.push(Box::new(strip(monitor, &own, theme, settings.text("workspace_style"))));
+    }
+
+    if settings.flag("bar_workspace_name") {
+        items.push(Box::new(name));
+    }
 
     Row::new(items)
         .width(width)
@@ -64,8 +74,8 @@ pub fn view(monitor: &Monitor, theme: &Theme, width: f32) -> Row {
         .align(Center)
 }
 
-// the dots, with the sliding accent highlight drawn over them
-fn strip(monitor: &Monitor, workspaces: &[&Workspace], theme: &Theme) -> Rectangle {
+// the dots or numbers, with the sliding accent highlight drawn over them
+fn strip(monitor: &Monitor, workspaces: &[&Workspace], theme: &Theme, style: &str) -> Rectangle {
     let mut slots: Vec<Box<dyn Widget>> = Vec::new();
 
     let mut active = 0;
@@ -75,7 +85,7 @@ fn strip(monitor: &Monitor, workspaces: &[&Workspace], theme: &Theme) -> Rectang
             active = position;
         }
 
-        slots.push(Box::new(slot(workspace, theme)));
+        slots.push(Box::new(slot(workspace, theme, style)));
     }
 
     let count = workspaces.len() as f32;
@@ -91,11 +101,23 @@ fn strip(monitor: &Monitor, workspaces: &[&Workspace], theme: &Theme) -> Rectang
         .height(SLOT)
         .radius(Full)
         .fill(theme.accent)
-        .translate(offset, 0.0)
-        .child(star::view(SLOT, rotation, theme.on_accent));
+        .translate(offset, 0.0);
+
+    let active_index = workspaces.get(active).map_or(1, |workspace| workspace.index() as usize);
+
+    // the pill style spins a star in the highlight, numbers repeat the active one
+    let highlight: Box<dyn Widget> = match style {
+        "numbers" => Box::new(
+            highlight
+                .align_child(Center, Center)
+                .child(number(active_index, theme.on_accent)),
+        ),
+        "dots" => Box::new(highlight),
+        _ => Box::new(highlight.child(star::view(SLOT, rotation, theme.on_accent))),
+    };
 
     // the highlight slides over the dots, which stay where they are
-    let layers = Stack::new(children![Row::new(slots).gap(SLOT_GAP).align(Center), highlight]);
+    let layers = Stack::new(vec![Box::new(Row::new(slots).gap(SLOT_GAP).align(Center)), highlight]);
 
     Rectangle::new()
         .width(content + STRIP_PADDING * 2.0)
@@ -106,8 +128,8 @@ fn strip(monitor: &Monitor, workspaces: &[&Workspace], theme: &Theme) -> Rectang
         .child(layers)
 }
 
-// a small dot, the highlight covers the active one
-fn slot(workspace: &Workspace, theme: &Theme) -> Rectangle {
+// a small dot or its number, the highlight covers the active one
+fn slot(workspace: &Workspace, theme: &Theme, style: &str) -> Rectangle {
     let id = workspace.id();
 
     let color = if workspace.urgent() {
@@ -118,13 +140,28 @@ fn slot(workspace: &Workspace, theme: &Theme) -> Rectangle {
         theme.muted_text
     };
 
+    let mark = if style == "numbers" {
+        number(workspace.index() as usize, color)
+    } else {
+        Text::new(INACTIVE).size(11.0).font(fonts::SYMBOLS).color(color)
+    };
+
     Rectangle::new()
         .width(SLOT)
         .height(SLOT)
         .cursor(Pointer)
         .on_click(move |_| Workspaces::focus(id))
         .align_child(Center, Center)
-        .child(Text::new(INACTIVE).size(11.0).font(fonts::SYMBOLS).color(color))
+        .child(mark)
+}
+
+fn number(index: usize, color: Color) -> Text {
+    Text::new(index.to_string())
+        .size(12.0)
+        .font(fonts::BODY)
+        .weight(Weight::Bold)
+        .tight()
+        .color(color)
 }
 
 // the workspace's own name, or "Workspace 2" when it has none

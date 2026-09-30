@@ -53,11 +53,12 @@ impl Glide {
 
     // 0 when it has just started, 1 once it has arrived
     fn progress(&self) -> f32 {
-        if self.duration.is_zero() {
+        if self.duration.is_zero() || super::reduced() {
             return 1.0;
         }
 
-        let elapsed = self.started.elapsed().as_secs_f32();
+        // the animation speed setting makes time pass faster or slower
+        let elapsed = self.started.elapsed().as_secs_f32() * super::speed();
         let total = self.duration.as_secs_f32();
 
         f32::min(elapsed / total, 1.0)

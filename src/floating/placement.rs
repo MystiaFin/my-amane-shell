@@ -8,6 +8,7 @@ use std::time::Duration;
 use amane::Service;
 
 use crate::wallpaper::Wallpaper;
+use crate::settings::Settings;
 
 use analysis::{Analysis, Area};
 
@@ -41,7 +42,12 @@ impl Service for Placement {
         loop {
             let path = Wallpaper::read().path.clone();
 
-            if path != Self::read().path {
+            let placed = Self::read().path.clone();
+
+            // locked cards stay where the first wallpaper put them
+            let locked = !placed.is_empty() && Settings::read().flag("floating_lock_placement");
+
+            if path != placed && !locked {
                 let analysis = analyse(&path);
 
                 let mut placement = Self::write();

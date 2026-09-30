@@ -12,16 +12,13 @@ use super::{Overlay, PanelView, Region};
 use crate::fonts;
 use crate::liquid::{self, Blob};
 use crate::motion::{self, Spring};
+use crate::settings::Settings;
 use crate::theme::Theme;
 
 use results::{Entry, Kind};
 
 // the text input's name, which keeps what was typed between redraws
 const INPUT: &str = "launcher";
-
-const MAX_WIDTH: f32 = 620.0;
-const MAX_HEIGHT: f32 = 620.0;
-const MAX_ROWS: usize = 9;
 
 const ROW_HEIGHT: f32 = 60.0;
 const FIELD_HEIGHT: f32 = 46.0;
@@ -74,7 +71,7 @@ pub fn view(overlay: &Overlay, theme: &Theme, screen: Region) -> Option<PanelVie
 
     let entries = results::find(&overlay.query, &overlay.sessions);
 
-    let full_width = MAX_WIDTH.min(screen.width - 80.0);
+    let full_width = Settings::read().number("launcher_width").min(screen.width - 80.0);
     let width = full_width * (CLOSED_WIDTH + (1.0 - CLOSED_WIDTH) * progress);
 
     let rows = visible_rows(screen, entries.len()).max(1);
@@ -125,14 +122,13 @@ fn follow_height(target: f32) -> f32 {
     })
 }
 
-fn max_height(screen: Region) -> f32 {
-    MAX_HEIGHT.min(screen.height - 60.0)
-}
-
+// the rows the settings ask for, as many as fit on the screen
 fn max_rows(screen: Region) -> usize {
-    let fitting = ((max_height(screen) - FIXED_HEIGHT) / ROW_HEIGHT).floor() as usize;
+    let wanted = Settings::read().number("launcher_rows") as usize;
 
-    fitting.clamp(1, MAX_ROWS)
+    let fitting = ((screen.height - 60.0 - FIXED_HEIGHT) / ROW_HEIGHT).floor() as usize;
+
+    wanted.min(fitting).max(1)
 }
 
 fn visible_rows(screen: Region, count: usize) -> usize {
@@ -246,17 +242,43 @@ fn row(overlay: &Overlay, theme: &Theme, entry: &Entry, index: usize, width: f32
         amane::Color::TRANSPARENT
     };
 
-    let name = Text::new(&entry.name)
-        .size(15.0)
-        .font(fonts::BODY)
-        .color(theme.text)
-        .elide();
+    let show_icon = Settings::read().flag("launcher_icons");
+
+    let name_width = if show_icon {
+        width - 62.0 - 12.0
+    } else {
+        width - 24.0
+    };
+
+    let mut labels: Vec<Box<dyn Widget>> = vec![Box::new(
+        Text::new(&entry.name)
+            .size(15.0)
+            .font(fonts::BODY)
+            .color(theme.text)
+            .elide(),
+    )];
+
+    if let Some(description) = &entry.description {
+        let description = Text::new(description)
+            .size(12.0)
+            .font(fonts::BODY)
+            .color(theme.secondary_text)
+            .elide();
+
+        labels.push(Box::new(description));
+    }
 
     let name = Rectangle::new()
-        .width(width - 62.0 - 12.0)
+        .width(name_width)
         .height(ROW_HEIGHT)
         .align_child(Start, Center)
-        .child(name);
+        .child(Column::new(labels).gap(2.0));
+
+    let content: Box<dyn Widget> = if show_icon {
+        Box::new(Row::new(children![icon(entry, theme), name]).gap(12.0).align(Center))
+    } else {
+        Box::new(name)
+    };
 
     Rectangle::new()
         .width(width)
@@ -277,7 +299,7 @@ fn row(overlay: &Overlay, theme: &Theme, entry: &Entry, index: usize, width: f32
             left: 12.0,
         })
         .align_child(Start, Center)
-        .child(Row::new(children![icon(entry, theme), name]).gap(12.0).align(Center))
+        .child(Column::new(vec![content]))
 }
 
 // the app's own icon, a glyph for commands, or empty space to keep names lined up
@@ -329,16 +351,19 @@ pub fn ipc(arguments: &[String]) -> String {
     String::from("ok")
 }
 
-// always opens on an empty search, at the top of the list
+// opens at the top of the list, on an empty search unless the last one is remembered
 fn show(overlay: &mut Overlay) {
     overlay.power_menu.hide();
     overlay.control_center.hide();
     super::utility::close(overlay);
     overlay.launcher.show();
 
-    overlay.query.clear();
+    // remembering keeps the last search, and the field still shows it
+    if !Settings::read().flag("launcher_remember_query") {
+        overlay.query.clear();
 
-    TextInput::set_text(INPUT, "");
+        TextInput::set_text(INPUT, "");
+    }
 
     reset_list(overlay);
 }
@@ -367,7 +392,7 @@ pub fn key_pressed(key: Key) {
         }
 
         // the first escape clears the search, the second closes
-        Key::Escape if !overlay.query.is_empty() => {
+        Key::Escape if !overlay.query.is_empty() && Settings::read().flag("launcher_escape_clears") => {
             overlay.query.clear();
 
             TextInput::set_text(INPUT, "");
@@ -468,17 +493,36 @@ fn launch_selected() {
         return;
     };
 
+    let close = Settings::read().flag("launcher_close_on_launch");
+
     match &entry.kind {
         Kind::App(index) => {
             Apps::read().list()[*index].launch();
 
-            overlay.launcher.hide();
+            if close {
+                overlay.launcher.hide();
+            }
         }
 
         Kind::Settings => {
             overlay.launcher.hide();
 
             crate::settings::open();
+        }
+
+        Kind::Colors => {
+            overlay.launcher.hide();
+
+            crate::settings::open_on(crate::settings::Page::Colors);
+        }
+
+        Kind::Wallpapers => {
+            overlay.launcher.hide();
+
+            // the picker takes the overlay's place, so this write ends first
+            drop(overlay);
+
+            crate::wallpaper::picker::ipc(&[String::from("show")]);
         }
 
         Kind::TmuxCommand => {
@@ -491,7 +535,7 @@ fn launch_selected() {
         }
 
         Kind::Tmux(session) => {
-            if results::attach(session) {
+            if results::attach(session) && close {
                 overlay.launcher.hide();
             }
         }

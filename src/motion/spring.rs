@@ -47,7 +47,8 @@ impl Clock {
     fn advance(&mut self) -> f32 {
         let now = Instant::now();
 
-        let step = now.duration_since(self.last).as_secs_f32().min(MAX_STEP);
+        // the animation speed setting makes time pass faster or slower for the spring
+        let step = now.duration_since(self.last).as_secs_f32().min(MAX_STEP) * super::speed();
 
         self.elapsed += step;
         self.last = now;
@@ -108,6 +109,10 @@ impl Spring {
 
     // read in the view, and while it is still moving the window keeps drawing frames
     pub fn value(&self) -> f32 {
+        if super::reduced() {
+            return self.target;
+        }
+
         let (position, velocity) = self.state();
 
         let near = (position - self.target).abs() <= self.precision;

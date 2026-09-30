@@ -6,6 +6,7 @@ use amane::{
 use super::{pill, ring};
 use crate::fonts;
 use crate::overlay::Overlay;
+use crate::settings::Settings;
 use crate::theme::Theme;
 
 // the memory icon, and the notification, wifi and bluetooth tray icons
@@ -23,15 +24,23 @@ const TRAY_PADDING: f32 = 10.0;
 const EDGE: f32 = 5.0;
 
 pub fn view(theme: &Theme, width: f32) -> Row {
+    let settings = Settings::read();
+
     let mut items: Vec<Box<dyn Widget>> = Vec::new();
 
-    if let Some(battery) = battery(theme) {
-        items.push(Box::new(battery));
+    if settings.flag("bar_battery") {
+        if let Some(battery) = battery(theme) {
+            items.push(Box::new(battery));
+        }
     }
 
-    items.push(Box::new(memory(theme)));
+    if settings.flag("bar_memory") {
+        items.push(Box::new(memory(theme)));
+    }
 
-    items.push(Box::new(tray(theme)));
+    if settings.flag("bar_tray") {
+        items.push(Box::new(tray(theme)));
+    }
 
     items.push(Box::new(Rectangle::new().width(EDGE).height(1.0)));
 

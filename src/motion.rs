@@ -8,6 +8,10 @@ pub use follow::{fade, follow};
 pub use glide::Glide;
 pub use spring::Spring;
 
+use amane::Service;
+
+use crate::settings::Settings;
+
 // leaves quickly and settles very softly, for anything that moves across the screen
 const SPATIAL: [f32; 4] = [0.2, 0.0, 0.0, 1.0];
 
@@ -49,4 +53,23 @@ pub fn size(value: f32) -> Spring {
         .stiffness(SIZE_STIFFNESS)
         .damping(SIZE_DAMPING)
         .precision(0.1)
+}
+
+// how much faster than normal everything moves, from the settings
+pub fn speed() -> f32 {
+    Settings::read().number("animation_speed").max(0.1)
+}
+
+// with reduced motion every animation is already where it is going
+pub fn reduced() -> bool {
+    Settings::read().flag("reduce_motion")
+}
+
+// how long a wait on an animation really lasts, for threads that sleep through one
+pub fn paced(milliseconds: u64) -> Duration {
+    if reduced() {
+        return Duration::ZERO;
+    }
+
+    Duration::from_millis(milliseconds).div_f32(speed())
 }

@@ -4,9 +4,7 @@ use std::fs;
 use amane::Service;
 
 use crate::motion::{self, Glide};
-
-// the folder the picker lists, from home
-const FOLDER: &str = "Pictures/Wallpapers";
+use crate::settings::Settings;
 
 // the formats amane can decode
 const EXTENSIONS: [&str; 3] = ["png", "jpg", "jpeg"];
@@ -86,13 +84,19 @@ impl Picker {
     }
 }
 
+// the folder from the settings, where a leading ~ means home
 pub fn folder() -> String {
     let home = env::var("HOME").expect("failed to find home: HOME is not set");
 
-    format!("{home}/{FOLDER}")
+    let folder = String::from(Settings::read().text("wallpaper_folder"));
+
+    match folder.strip_prefix('~') {
+        Some(rest) => format!("{home}{rest}"),
+        None => folder,
+    }
 }
 
-fn list_folder() -> Vec<String> {
+pub fn list_folder() -> Vec<String> {
     let Ok(entries) = fs::read_dir(folder()) else {
         return Vec::new();
     };

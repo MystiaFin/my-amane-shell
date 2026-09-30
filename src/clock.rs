@@ -2,6 +2,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use amane::Service;
 
+use crate::settings::Settings;
+
 // the offset is asked for again every 10 minutes, to follow daylight saving changes
 const OFFSET_REFRESH: u32 = 600;
 
@@ -60,17 +62,28 @@ impl Service for Clock {
 
         self.local = since_epoch + self.offset;
 
-        self.local.div_euclid(60) != minute
+        // a clock with seconds shows something new every tick
+        self.local.div_euclid(60) != minute || Settings::read().flag("clock_seconds")
     }
 }
 
 impl Clock {
-    // 12 hour time, like "09:05 PM"
-    pub fn time(&self) -> String {
+    // like "09:05 PM", or "21:05" with the 24 hour setting, and "21:05:09" with seconds
+    pub fn time(&self, seconds: bool) -> String {
         let today = self.local.rem_euclid(SECONDS_PER_DAY);
 
         let hours = today / 3600;
         let minutes = today % 3600 / 60;
+
+        let shown = if seconds {
+            format!("{minutes:02}:{:02}", today % 60)
+        } else {
+            format!("{minutes:02}")
+        };
+
+        if Settings::read().flag("clock_24_hour") {
+            return format!("{hours:02}:{shown}");
+        }
 
         let period = if hours < 12 { "AM" } else { "PM" };
 
@@ -80,7 +93,7 @@ impl Clock {
             hours => hours,
         };
 
-        format!("{hours:02}:{minutes:02} {period}")
+        format!("{hours:02}:{shown} {period}")
     }
 
     // like "Tuesday, 29 Sep 2026"

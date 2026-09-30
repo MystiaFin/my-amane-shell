@@ -5,6 +5,7 @@ use amane::{
 
 use super::{pill, ring};
 use crate::clock::Clock;
+use crate::settings::Settings;
 use crate::fonts;
 use crate::overlay::Overlay;
 use crate::theme::Theme;
@@ -21,11 +22,28 @@ const RING_THICKNESS: f32 = 4.0;
 const STEP: i32 = 5;
 
 pub fn view(theme: &Theme, width: f32) -> Row {
-    let items: Vec<Box<dyn Widget>> = vec![
-        Box::new(audio(theme)),
-        Box::new(media(theme)),
-        Box::new(clock(theme)),
-    ];
+    let settings = Settings::read();
+
+    let show_audio = settings.flag("bar_audio");
+    let show_media = settings.flag("bar_media");
+    let show_clock = settings.flag("bar_clock");
+
+    // the clock reads the settings again, so this read ends first
+    drop(settings);
+
+    let mut items: Vec<Box<dyn Widget>> = Vec::new();
+
+    if show_audio {
+        items.push(Box::new(audio(theme)));
+    }
+
+    if show_media {
+        items.push(Box::new(media(theme)));
+    }
+
+    if show_clock {
+        items.push(Box::new(clock(theme)));
+    }
 
     Row::new(items)
         .width(width)
@@ -121,7 +139,9 @@ fn media(theme: &Theme) -> Rectangle {
 fn clock(theme: &Theme) -> Row {
     let clock = Clock::read();
 
-    let text = format!("{}  •  {}", clock.time(), clock.date());
+    let seconds = Settings::read().flag("clock_seconds");
+
+    let text = format!("{}  •  {}", clock.time(seconds), clock.date());
 
     Row::new(children![
         Rectangle::new().width(8.0).height(1.0),

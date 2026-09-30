@@ -15,6 +15,7 @@ use crate::bar;
 use crate::clock::Clock;
 use crate::fonts;
 use crate::motion::{self, DEFAULT_SPATIAL};
+use crate::settings::Settings;
 use crate::theme::{self, Theme};
 
 use card::Reading;
@@ -49,7 +50,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     let theme = theme::current();
 
     let width = monitor.width as f32;
-    let height = monitor.height as f32 - bar::HEIGHT;
+    let height = monitor.height as f32 - bar::reserved();
 
     let empty = Workspaces::read()
         .list()
@@ -57,8 +58,22 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .find(|workspace| workspace.active() && workspace.output() == Some(&monitor.name))
         .is_some_and(|workspace| workspace.windows() == 0);
 
+    let settings = Settings::read();
+
+    let wanted = match settings.text("floating_visibility") {
+        "always" => true,
+        "hidden" => false,
+        _ => empty,
+    };
+
+    let scale = settings.number("floating_scale");
+    let opacity = settings.number("floating_opacity");
+    let show_clock = settings.flag("widget_clock");
+
+    drop(settings);
+
     // the cards fade in and out, so the window stays until they are gone
-    let target = if empty { 1.0 } else { 0.0 };
+    let target = if wanted { 1.0 } else { 0.0 };
 
     let shown = motion::follow(&format!("floating:{}", monitor.name), target, DEFAULT_SPATIAL);
 
@@ -68,17 +83,25 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
 
     names.push(Name::Clock);
 
-    let spots = spots(&theme, &names, width, height);
+    let spots = spots(&theme, &names, width, height, scale);
 
     // the clock's text leans toward the screen edge it sits nearest, so it never floats off it
-    let clock_center = spots[&Name::Clock].0 + CLOCK_WIDTH / 2.0;
+    let clock_center = spots[&Name::Clock].0 + CLOCK_WIDTH * scale / 2.0;
 
-    cards.push((Name::Clock, clock(&theme, clock_center < width / 2.0)));
+    if show_clock {
+        cards.push((Name::Clock, clock(&theme, clock_center < width / 2.0)));
+    }
 
     let mut layers: Vec<Box<dyn Widget>> = Vec::new();
 
     for (name, card) in cards {
         let (x, y) = spots[&name];
+
+        // a card grows around its center, so it is moved by half its growth to keep its corner on the spot
+        let (card_width, card_height) = size(name, 1.0);
+
+        let x = x + card_width * (scale - 1.0) / 2.0;
+        let y = y + card_height * (scale - 1.0) / 2.0;
 
         // each card glides on its own, named by monitor so screens never share a glide
         let key = format!("floating:{}:{name:?}", monitor.name);
@@ -86,7 +109,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         let x = motion::follow(&format!("{key}:x"), x, MOVE);
         let y = motion::follow(&format!("{key}:y"), y, MOVE);
 
-        layers.push(Box::new(card.translate(x, y)));
+        layers.push(Box::new(card.scale(scale).translate(x, y)));
     }
 
     LayerWindow::new()
@@ -95,41 +118,50 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .layer(Layer::Bottom)
         .space(Zone::Respect)
         .namespace("floating-widgets")
-        .visible(empty || shown > 0.001)
+        .visible(wanted || shown > 0.001)
         .click_through()
         .child(
             Rectangle::new()
                 .width(Parent)
                 .height(Parent)
-                .opacity(shown)
+                .opacity(shown * opacity)
                 .child(Stack::new(layers).width(Parent).height(Parent)),
         )
 }
 
-fn size(name: Name) -> (f32, f32) {
-    match name {
+// the room a card takes at the given scale
+fn size(name: Name, scale: f32) -> (f32, f32) {
+    let (width, height) = match name {
         Name::Clock => (CLOCK_WIDTH, CLOCK_HEIGHT),
         Name::Weather => (WEATHER_WIDTH, WEATHER_HEIGHT),
         _ => (card::WIDTH, card::HEIGHT),
-    }
+    };
+
+    (width * scale, height * scale)
 }
 
 /*
  * where every card goes on this screen: the calmest spots on the wallpaper,
  * or fixed corners until the wallpaper has been read, or when nothing fits
  */
-fn spots(theme: &Theme, names: &[Name], width: f32, height: f32) -> HashMap<Name, (f32, f32)> {
+fn spots(
+    theme: &Theme,
+    names: &[Name],
+    width: f32,
+    height: f32,
+    scale: f32,
+) -> HashMap<Name, (f32, f32)> {
     let placement = Placement::read();
 
     let Some(analysis) = placement.analysis() else {
-        return corners(names, width, height);
+        return corners(names, width, height, scale);
     };
 
     let sized = |group: &[Name]| -> Vec<(Name, f32, f32)> {
         let mut sized = Vec::new();
 
         for name in names.iter().filter(|name| group.contains(name)) {
-            let (card_width, card_height) = size(*name);
+            let (card_width, card_height) = size(*name, scale);
 
             sized.push((*name, card_width, card_height));
         }
@@ -147,7 +179,7 @@ fn spots(theme: &Theme, names: &[Name], width: f32, height: f32) -> HashMap<Name
     let request = Request {
         screen: (width, height),
         usable: (MARGIN, MARGIN, width - MARGIN * 2.0, height - MARGIN * 2.0),
-        clock: (CLOCK_WIDTH, CLOCK_HEIGHT),
+        clock: size(Name::Clock, scale),
         primary: sized(&[Name::Weather]),
         resources: sized(&[Name::CpuTemperature, Name::CpuUsage, Name::GpuTemperature]),
         environment: sized(&[Name::UvIndex, Name::Humidity, Name::AirQuality]),
@@ -156,31 +188,33 @@ fn spots(theme: &Theme, names: &[Name], width: f32, height: f32) -> HashMap<Name
         crop: placement::crop(analysis, width, height),
     };
 
-    placement::arrange(&request).unwrap_or_else(|| corners(names, width, height))
+    placement::arrange(&request).unwrap_or_else(|| corners(names, width, height, scale))
 }
 
 // readings top left, weather top right, the air bottom left and the clock bottom right
-fn corners(names: &[Name], width: f32, height: f32) -> HashMap<Name, (f32, f32)> {
+fn corners(names: &[Name], width: f32, height: f32, scale: f32) -> HashMap<Name, (f32, f32)> {
     let mut spots = HashMap::new();
 
     let mut top_left = MARGIN;
     let mut bottom_left = MARGIN;
 
     for name in names {
+        let (card_width, card_height) = size(*name, scale);
+
         let spot = match name {
-            Name::Clock => (width - MARGIN - CLOCK_WIDTH, height - MARGIN - CLOCK_HEIGHT),
-            Name::Weather => (width - MARGIN - WEATHER_WIDTH, MARGIN),
+            Name::Clock => (width - MARGIN - card_width, height - MARGIN - card_height),
+            Name::Weather => (width - MARGIN - card_width, MARGIN),
 
             Name::CpuTemperature | Name::CpuUsage | Name::GpuTemperature => {
-                top_left += card::WIDTH + GAP;
+                top_left += card_width + GAP;
 
-                (top_left - card::WIDTH - GAP, MARGIN)
+                (top_left - card_width - GAP, MARGIN)
             }
 
             Name::UvIndex | Name::Humidity | Name::AirQuality => {
-                bottom_left += card::WIDTH + GAP;
+                bottom_left += card_width + GAP;
 
-                (bottom_left - card::WIDTH - GAP, height - MARGIN - card::HEIGHT)
+                (bottom_left - card_width - GAP, height - MARGIN - card_height)
             }
         };
 
@@ -271,7 +305,25 @@ fn cards(theme: &Theme) -> Vec<(Name, Rectangle)> {
         ),
     ));
 
+    cards.retain(|(name, _)| turned_on(*name));
+
     cards
+}
+
+// whether the settings show this card
+fn turned_on(name: Name) -> bool {
+    let key = match name {
+        Name::Clock => "widget_clock",
+        Name::Weather => "widget_weather",
+        Name::CpuTemperature => "widget_cpu_temperature",
+        Name::CpuUsage => "widget_cpu_usage",
+        Name::GpuTemperature => "widget_gpu_temperature",
+        Name::UvIndex => "widget_uv",
+        Name::Humidity => "widget_humidity",
+        Name::AirQuality => "widget_air_quality",
+    };
+
+    Settings::read().flag(key)
 }
 
 fn temperature(theme: &Theme, label: &str, degrees: u32) -> Rectangle {

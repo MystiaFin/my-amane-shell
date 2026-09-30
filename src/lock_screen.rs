@@ -53,7 +53,7 @@ fn clock(width: f32, height: f32) -> Rectangle {
     let time_size = (width * 0.075).clamp(78.0, 112.0);
 
     let column = Column::new(children![
-        Text::new(clock.time())
+        Text::new(clock.time(false))
             .size(time_size)
             .font(fonts::BODY)
             .weight(Weight::SemiBold)

@@ -1,21 +1,45 @@
-use amane::{Rectangle, Service};
+use amane::{Column, children};
 
-use super::{choice, row};
-use crate::theme::{Mode, Theme};
+use super::slider::{self, Range};
+use super::switch;
+use crate::theme::Theme;
 
-// light, dark, or following the wallpaper's brightness
-pub fn view(theme: &Theme, width: f32) -> Rectangle {
-    let picked = Mode::read().light;
-
-    let options = [("Auto", None), ("Light", Some(true)), ("Dark", Some(false))];
-
-    let control = choice::view(theme, "color-mode", &options, picked, Mode::set);
-
-    row::view(
-        theme,
-        width,
-        "Color mode",
-        "Auto follows how bright the wallpaper is",
-        control,
-    )
+// how solid the shell's surfaces are
+pub fn view(theme: &Theme, width: f32) -> Column {
+    Column::new(children![
+        slider::row(
+            theme,
+            width,
+            "surface_opacity",
+            "Surface opacity",
+            "Make the shell's surfaces more or less see-through",
+            Range {
+                min: 0.6,
+                max: 1.0,
+                step: 0.02,
+                label: slider::plain,
+            },
+        ),
+        slider::row(
+            theme,
+            width,
+            "blur_strength",
+            "Blur strength",
+            "How much the wallpaper blurs behind the wallpaper picker",
+            Range {
+                min: 0.0,
+                max: 1.0,
+                step: 0.05,
+                label: slider::plain,
+            },
+        ),
+        switch::row(
+            theme,
+            width,
+            "reduce_transparency",
+            "Reduce transparency",
+            "Opaque surfaces and no wallpaper blur",
+        ),
+    ])
+    .gap(12.0)
 }

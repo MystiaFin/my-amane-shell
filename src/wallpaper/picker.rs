@@ -10,9 +10,10 @@ use card::Place;
 
 use super::Wallpaper;
 use crate::fonts;
+use crate::settings::Settings;
 use crate::theme;
 
-pub use state::Picker;
+pub use state::{Picker, list_folder};
 
 // the band's height, leaving at least this much of the screen above and below
 const HEIGHT: f32 = 380.0;
@@ -68,12 +69,24 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     // as tall as the screen and moved up, so it lines up with the wallpaper around the band
     let top = (screen_height - height) / 2.0;
 
-    let blurred_width = (screen_width / BLUR_SHRINK) as u32;
-    let blurred_height = (screen_height / BLUR_SHRINK) as u32;
+    let settings = Settings::read();
+
+    let strength = settings.number("blur_strength");
+    let opaque = settings.flag("reduce_transparency");
+
+    drop(settings);
+
+    // a weaker blur keeps a bigger copy, none keeps it sharp
+    let shrink = 1.0 + (BLUR_SHRINK - 1.0) * strength;
+
+    let radius = if strength > 0.0 { BLUR_RADIUS } else { 0 };
+
+    let blurred_width = (screen_width / shrink) as u32;
+    let blurred_height = (screen_height / shrink) as u32;
 
     let blurred = Image::cover(&Wallpaper::read().shown)
         .thumbnail(blurred_width, blurred_height)
-        .blurred(BLUR_RADIUS);
+        .blurred(radius);
 
     let backdrop = Rectangle::new()
         .width(screen_width)
@@ -82,7 +95,9 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .translate(0.0, -top);
 
     // an alpha in the color, since fading the rectangle would give it a canvas of its own
-    let tint_alpha = (TINT * 255.0).round() as u8;
+    let tint = if opaque { 1.0 } else { TINT };
+
+    let tint_alpha = (tint * 255.0).round() as u8;
 
     let surface = theme.surface;
 

@@ -8,13 +8,14 @@ use std::time::{Duration, Instant};
 use amane::{Image, Palette, Service};
 
 use crate::motion::{self, Glide};
+use crate::settings::Settings;
 
 // the wallpaper picker writes the chosen file here
 const SELECTION: &str = ".config/quickshell/wallpaper-selection";
 
 const PALETTE_SIZE: usize = 16;
 
-// every wallpaper animation takes this long, like the quickshell config's wallpaper group
+// the startup animations take this long, a new wallpaper takes what the settings say
 pub const DURATION: u64 = 1200;
 
 // a file that never decodes is shown anyway after this long, as nothing
@@ -81,7 +82,10 @@ impl Service for Wallpaper {
                 continue;
             }
 
-            Palette::write().open(&path, PALETTE_SIZE);
+            // with following turned off the colors stay those of an earlier wallpaper
+            if Settings::read().flag("follow_wallpaper") {
+                Palette::write().open(&path, PALETTE_SIZE);
+            }
 
             Self::write().path = path.clone();
 
@@ -99,26 +103,39 @@ fn play_intro() {
 
     Wallpaper::write().backdrop.to(1.0);
 
-    thread::sleep(Duration::from_millis(DURATION));
+    thread::sleep(motion::paced(DURATION));
 
     Wallpaper::write().rise.to(1.0);
 }
 
-// the circle grows over the old wallpaper, which is replaced once it covers everything
+// the new wallpaper grows or fades in over the old one, which is replaced once it is covered
 fn reveal(path: String) {
     wait_until_loaded(&path);
+
+    let settings = Settings::read();
+
+    let instant = settings.text("wallpaper_transition") == "instant";
+    let duration = settings.number("wallpaper_duration") as u64;
+
+    drop(settings);
+
+    if instant {
+        Wallpaper::write().shown = path;
+
+        return;
+    }
 
     {
         let mut wallpaper = Wallpaper::write();
 
         wallpaper.incoming = Some(path.clone());
         wallpaper.center = (random_share(), random_share());
-        wallpaper.reveal = motion::spatial(0.0, DURATION);
+        wallpaper.reveal = motion::spatial(0.0, duration);
 
         wallpaper.reveal.to(1.0);
     }
 
-    thread::sleep(Duration::from_millis(DURATION));
+    thread::sleep(motion::paced(duration));
 
     let mut wallpaper = Wallpaper::write();
 
@@ -135,7 +152,7 @@ fn wait_until_loaded(path: &str) {
 }
 
 // std seeds every RandomState differently, which is all the randomness this needs
-fn random_share() -> f32 {
+pub fn random_share() -> f32 {
     let random = RandomState::new().hash_one(0);
 
     (random % 1000) as f32 / 1000.0

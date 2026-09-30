@@ -1,5 +1,6 @@
 pub mod control_center;
 pub mod launcher;
+pub mod dismiss;
 mod panel;
 mod popups;
 pub mod power_menu;
@@ -47,7 +48,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         x: 0.0,
         y: 0.0,
         width: monitor.width as f32,
-        height: monitor.height as f32 - bar::HEIGHT,
+        height: monitor.height as f32 - bar::reserved(),
     };
 
     let mut panels: Vec<PanelView> = Vec::new();
@@ -112,6 +113,8 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         screen_height: screen.height,
     };
 
+    let surface = theme::with_opacity(theme.background, theme::surface_opacity());
+
     let margin = Margin {
         top: reach.y as i32,
         right: 0,
@@ -130,7 +133,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .keyboard(keyboard)
         .on_key(key_pressed)
         .input_region(areas)
-        .child(liquid::view(theme.background, blobs, placement))
+        .child(liquid::view(surface, blobs, placement))
 }
 
 // only one panel is out at a time, so only one of these acts on the key

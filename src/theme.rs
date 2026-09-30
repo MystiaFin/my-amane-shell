@@ -1,9 +1,13 @@
 mod hsl;
 mod mode;
+mod scheme;
 
 use amane::{Color, Palette, Service};
 
 use hsl::Hsl;
+use scheme::{CATPPUCCIN, GRUVBOX, Scheme};
+
+use crate::settings::Settings;
 
 pub use mode::Mode;
 
@@ -29,23 +33,63 @@ pub struct Theme {
     pub muted_text: Color,
 
     pub accent: Color,
+    pub accent_hover: Color,
     pub on_accent: Color,
 
     pub success: Color,
     pub danger: Color,
 }
 
-// every color is the wallpaper's darkest or most vivid color, re-lit
+// how the dynamic palette is tuned in the settings
+struct Tuning {
+    saturation: f32,
+    contrast: f32,
+}
+
+// every color is the wallpaper's darkest or most vivid color, re-lit, unless a fixed scheme is picked
 pub fn current() -> Theme {
+    let light = Mode::read().light;
+
+    for_mode(light)
+}
+
+// the theme as it would be in light or dark, none to decide from the wallpaper
+pub fn for_mode(forced: Option<bool>) -> Theme {
+    let settings = Settings::read();
+
+    match settings.text("scheme") {
+        "gruvbox" => return fixed(&GRUVBOX),
+        "catppuccin" => return fixed(&CATPPUCCIN),
+        _ => {}
+    }
+
+    let tuning = Tuning {
+        saturation: settings.number("saturation"),
+        contrast: settings.number("contrast"),
+    };
+
+    // a hand-picked accent replaces the wallpaper's
+    let manual_accent = if settings.flag("manual_accent") {
+        Some(Color::from(settings.text("accent")))
+    } else {
+        None
+    };
+
+    drop(settings);
+
     let palette = Palette::read();
 
     // a choice made by hand wins, otherwise a bright wallpaper gets a light theme
-    let light = Mode::read().light.unwrap_or(palette.light());
+    let light = forced.unwrap_or(palette.light());
 
     let base = palette.background();
-    let seed = palette.accent();
+    let seed = manual_accent.unwrap_or(palette.accent());
 
     let seed_saturation = hsl::from_color(seed).saturation;
+
+    let tone = |color: Color, lightness: f32, min_saturation: f32| {
+        tone(color, lightness, min_saturation, &tuning)
+    };
 
     let background = pick(light, 0.94, 0.075);
     let surface = pick(light, 0.88, 0.12);
@@ -54,6 +98,7 @@ pub fn current() -> Theme {
     let surface = tone(base, surface, pick(light, 0.10, 0.28));
 
     let accent = tone(seed, pick(light, 0.42, 0.68), seed_saturation.max(0.58));
+    let accent_hover = tone(seed, pick(light, 0.34, 0.78), seed_saturation.max(0.48));
 
     let text = tone(base, pick(light, 0.10, 0.91), 0.10);
     let secondary_text = tone(base, pick(light, 0.30, 0.72), 0.14);
@@ -90,9 +135,30 @@ pub fn current() -> Theme {
         secondary_text,
         muted_text,
         accent,
+        accent_hover,
         on_accent,
         success,
         danger,
+    }
+}
+
+// a fixed scheme is always dark; selected sits between the surface and its hover
+fn fixed(scheme: &Scheme) -> Theme {
+    Theme {
+        light: false,
+        background: scheme.background,
+        surface: scheme.surface,
+        hover_surface: scheme.hover_surface,
+        selected_surface: mix(scheme.surface, scheme.hover_surface, 0.5),
+        border: scheme.border,
+        text: scheme.text,
+        secondary_text: scheme.secondary_text,
+        muted_text: scheme.muted_text,
+        accent: scheme.accent,
+        accent_hover: scheme.accent_hover,
+        on_accent: scheme.on_accent,
+        success: scheme.success,
+        danger: scheme.danger,
     }
 }
 
@@ -100,11 +166,18 @@ fn pick(light: bool, when_light: f32, when_dark: f32) -> f32 {
     if light { when_light } else { when_dark }
 }
 
-// keeps the color's hue, sets its lightness, and keeps it at least a little colorful
-fn tone(color: Color, lightness: f32, min_saturation: f32) -> Color {
+/*
+ * keeps the color's hue, sets its lightness, and keeps it at least a little
+ * colorful; contrast pushes lightness away from the middle
+ */
+fn tone(color: Color, lightness: f32, min_saturation: f32, tuning: &Tuning) -> Color {
     let original = hsl::from_color(color);
 
     let saturation = original.saturation.min(MAX_SATURATION).max(min_saturation);
+
+    let saturation = (saturation * tuning.saturation).clamp(0.0, 1.0);
+
+    let lightness = 0.5 + (lightness - 0.5) * tuning.contrast;
 
     hsl::to_color(Hsl {
         hue: original.hue,
@@ -142,4 +215,31 @@ fn luminance(color: Color) -> f32 {
     };
 
     linear(color.red()) * 0.2126 + linear(color.green()) * 0.7152 + linear(color.blue()) * 0.0722
+}
+
+// how solid panels are drawn, fully solid while transparency is reduced
+pub fn surface_opacity() -> f32 {
+    let settings = Settings::read();
+
+    if settings.flag("reduce_transparency") {
+        return 1.0;
+    }
+
+    settings.number("surface_opacity")
+}
+
+pub fn with_opacity(color: Color, opacity: f32) -> Color {
+    let alpha = (opacity * 255.0).round() as u8;
+
+    Color::rgba(color.red(), color.green(), color.blue(), alpha)
+}
+
+// a color at a new lightness with the untuned rules, for palettes other programs use
+pub fn retone(color: Color, lightness: f32, min_saturation: f32) -> Color {
+    let untuned = Tuning {
+        saturation: 1.0,
+        contrast: 1.0,
+    };
+
+    tone(color, lightness, min_saturation, &untuned)
 }

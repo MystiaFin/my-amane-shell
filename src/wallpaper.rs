@@ -1,5 +1,6 @@
 pub mod picker;
 mod reveal;
+mod shuffle;
 mod state;
 
 use std::sync::atomic::Ordering;
@@ -10,8 +11,10 @@ use amane::{
 };
 
 use crate::bar;
+use crate::settings::Settings;
 use crate::theme;
 
+pub use shuffle::Shuffle;
 pub use state::{Wallpaper, choose};
 
 // only seen while the wallpaper rises in, the screen mask rounds the corners after that
@@ -56,14 +59,26 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
 
         let progress = wallpaper.reveal.value();
 
-        frame = frame.child(reveal::view(incoming, center, progress, width, height));
+        // a fade lays the whole new picture on top and brings it in
+        if Settings::read().text("wallpaper_transition") == "fade" {
+            let picture = Rectangle::new()
+                .width(Parent)
+                .height(Parent)
+                .radius(FRAME_RADIUS)
+                .fill(Image::cover(incoming))
+                .opacity(progress);
+
+            frame = frame.child(picture);
+        } else {
+            frame = frame.child(reveal::view(incoming, center, progress, width, height));
+        }
     }
 
     // pressed into the area below the bar, so its edge reads as the screen's edge
     let shadow = Rectangle::new()
         .width(Parent)
-        .height(height - bar::HEIGHT)
-        .translate(0.0, bar::HEIGHT)
+        .height(height - bar::reserved())
+        .translate(0.0, bar::reserved_top())
         .radius(SCREEN_RADIUS)
         .shadow(Shadow::inner(SHADOW).blur(SHADOW_BLUR));
 

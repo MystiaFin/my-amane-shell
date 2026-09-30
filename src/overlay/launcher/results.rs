@@ -2,6 +2,8 @@ use std::env;
 
 use amane::{Apps, Service};
 
+use crate::settings::Settings;
+
 // "> " opens the command palette, "!" lists tmux sessions
 const COMMAND_PREFIX: &str = ">";
 const TMUX_PREFIX: &str = "!";
@@ -10,8 +12,12 @@ pub enum Kind {
     // its place in Apps::list()
     App(usize),
 
-    // opens the settings window
+    // opens the settings window, on its colors page for the color command
     Settings,
+    Colors,
+
+    // opens the wallpaper picker
+    Wallpapers,
 
     // switches the search to tmux sessions
     TmuxCommand,
@@ -21,6 +27,9 @@ pub enum Kind {
 
 pub struct Entry {
     pub name: String,
+
+    // an app's description, shown under its name when turned on
+    pub description: Option<String>,
 
     // a nerd font glyph, for entries that have no app icon
     pub glyph: Option<&'static str>,
@@ -45,8 +54,11 @@ pub fn find(query: &str, sessions: &[String]) -> Vec<Entry> {
         return tmux(&search.trim().to_lowercase(), sessions);
     }
 
+    // with command mode off, ">" is searched for like any other letter
     if let Some(search) = query.strip_prefix(COMMAND_PREFIX) {
-        return commands(&search.trim().to_lowercase());
+        if Settings::read().flag("launcher_commands") {
+            return commands(&search.trim().to_lowercase());
+        }
     }
 
     apps(&query.trim().to_lowercase())
@@ -56,6 +68,8 @@ pub fn find(query: &str, sessions: &[String]) -> Vec<Entry> {
 fn apps(search: &str) -> Vec<Entry> {
     let apps = Apps::read();
 
+    let described = Settings::read().flag("launcher_descriptions");
+
     let mut found = Vec::new();
 
     for (index, app) in apps.list().iter().enumerate() {
@@ -63,8 +77,15 @@ fn apps(search: &str) -> Vec<Entry> {
             continue;
         }
 
+        let description = if described {
+            app.description().map(String::from)
+        } else {
+            None
+        };
+
         found.push(Entry {
             name: String::from(app.name()),
+            description,
             glyph: None,
             kind: Kind::App(index),
         });
@@ -73,22 +94,31 @@ fn apps(search: &str) -> Vec<Entry> {
     found
 }
 
-// only the commands that lead somewhere yet
+// the commands turned on in the settings
 fn commands(search: &str) -> Vec<Entry> {
     let all = [
-        ("Settings", "\u{f0493}", Kind::Settings),
-        ("Tmux sessions", "\u{f018d}", Kind::TmuxCommand),
+        ("Settings", "\u{f0493}", "command_settings", Kind::Settings),
+        ("Color scheme", "\u{f03d8}", "command_colors", Kind::Colors),
+        ("Tmux sessions", "\u{f018d}", "command_tmux", Kind::TmuxCommand),
+        ("Wallpapers", "\u{f02e9}", "command_wallpapers", Kind::Wallpapers),
     ];
+
+    let settings = Settings::read();
 
     let mut found = Vec::new();
 
-    for (name, glyph, kind) in all {
+    for (name, glyph, key, kind) in all {
+        if !settings.flag(key) {
+            continue;
+        }
+
         if !name.to_lowercase().contains(search) {
             continue;
         }
 
         found.push(Entry {
             name: String::from(name),
+            description: None,
             glyph: Some(glyph),
             kind,
         });
@@ -107,6 +137,7 @@ fn tmux(search: &str, sessions: &[String]) -> Vec<Entry> {
 
         found.push(Entry {
             name: session.clone(),
+            description: None,
             glyph: None,
             kind: Kind::Tmux(session.clone()),
         });
