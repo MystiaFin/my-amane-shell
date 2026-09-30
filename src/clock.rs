@@ -42,7 +42,10 @@ impl Service for Clock {
         clock
     }
 
-    fn update(&mut self) {
+    // ticks every second, but only a new minute changes what is shown
+    fn update(&mut self) -> bool {
+        let minute = self.local.div_euclid(60);
+
         self.ticks += 1;
 
         if self.ticks >= OFFSET_REFRESH {
@@ -56,6 +59,8 @@ impl Service for Clock {
             .as_secs() as i64;
 
         self.local = since_epoch + self.offset;
+
+        self.local.div_euclid(60) != minute
     }
 }
 
