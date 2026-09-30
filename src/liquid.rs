@@ -7,7 +7,7 @@ const MAX_BLOBS: usize = 8;
 
 const EDGE_OFFSET: f32 = 2.0;
 // how far apart two shapes start to flow into each other
-pub const CONNECTION: f32 = 36.0;
+pub const CONNECTION: f32 = 24.0;
 
 // a rounded rectangle of liquid with content on it, like a panel growing out of an edge
 // where the window drawing the liquid sits, since the liquid melts into the screen's edges
