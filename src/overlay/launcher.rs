@@ -478,7 +478,7 @@ fn launch_selected() {
         Kind::Settings => {
             overlay.launcher.hide();
 
-            amane::open_window(crate::settings::view);
+            crate::settings::open();
         }
 
         Kind::TmuxCommand => {

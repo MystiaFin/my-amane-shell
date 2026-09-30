@@ -2,8 +2,10 @@ mod bar;
 mod clock;
 mod fonts;
 mod liquid;
+mod lock_screen;
 mod motion;
 mod overlay;
+mod profile;
 mod screen_mask;
 mod settings;
 mod theme;
@@ -11,6 +13,7 @@ mod wallpaper;
 
 use amane::{App, Apps, Notifications, Service};
 
+use lock_screen::Logind;
 use wallpaper::Wallpaper;
 
 fn main() {
@@ -23,6 +26,9 @@ fn main() {
     // the notification server starts here, so nothing sent before the panel first opens is lost
     drop(Notifications::read());
 
+    // listens for logind asking to lock, like `loginctl lock-session` from the power menu
+    drop(Logind::read());
+
     App::new()
         .font(fonts::BODY)
         .window_per_monitor(wallpaper::view)
@@ -31,10 +37,12 @@ fn main() {
         .window_per_monitor(bar::view)
         .window_per_monitor(overlay::view)
         .window_per_monitor(wallpaper::picker::view)
+        .lock(lock_screen::view)
         .ipc("launcher", overlay::launcher::ipc)
         .ipc("utility", overlay::utility::ipc)
         .ipc("control", overlay::control_center::ipc)
         .ipc("settings", settings::ipc)
+        .ipc("lock", lock_screen::ipc)
         .ipc("wallpaper", wallpaper::picker::ipc)
         .run();
 }
