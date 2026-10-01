@@ -1,3 +1,5 @@
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
 
 use amane::{
@@ -369,7 +371,9 @@ fn icon_path(notification: &Notification) -> Option<PathBuf> {
 fn find_icon(notification: &Notification) -> Option<PathBuf> {
     let icon = notification.icon();
 
-    let icon = icon.strip_prefix("file://").unwrap_or(icon);
+    if let Some(url) = icon.strip_prefix("file://") {
+        return Some(PathBuf::from(decode_url(url)));
+    }
 
     if icon.starts_with('/') {
         return Some(PathBuf::from(icon));
@@ -388,6 +392,33 @@ fn find_icon(notification: &Notification) -> Option<PathBuf> {
     }
 
     None
+}
+
+// a file url writes spaces and other bytes as %20 and the like
+fn decode_url(url: &str) -> OsString {
+    let bytes = url.as_bytes();
+
+    let mut decoded = Vec::with_capacity(bytes.len());
+
+    let mut index = 0;
+
+    while index < bytes.len() {
+        let escaped = bytes
+            .get(index + 1..index + 3)
+            .filter(|_| bytes[index] == b'%')
+            .and_then(|hex| std::str::from_utf8(hex).ok())
+            .and_then(|hex| u8::from_str_radix(hex, 16).ok());
+
+        if let Some(byte) = escaped {
+            decoded.push(byte);
+            index += 3;
+        } else {
+            decoded.push(bytes[index]);
+            index += 1;
+        }
+    }
+
+    OsString::from_vec(decoded)
 }
 
 // one button for each action the sender offered
@@ -511,3 +542,18 @@ fn size_of(text: &Text) -> f32 {
         Size::Parent => 0.0,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decodes_spaces_in_file_urls() {
+        let path = decode_url("/home/me/Screenshot%20from%202026.png");
+
+        assert_eq!(path, "/home/me/Screenshot from 2026.png");
+
+        assert_eq!(decode_url("/100%.png"), "/100%.png");
+    }
+}
+
