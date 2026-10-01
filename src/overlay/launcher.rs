@@ -335,7 +335,10 @@ fn icon(entry: &Entry, theme: &Theme) -> Rectangle {
         return slot;
     }
 
-    slot.fill(Image::contain(path))
+    // twice the size, so it stays sharp on a scaled screen
+    let pixels = (ICON_SIZE * 2.0) as u32;
+
+    slot.fill(Image::contain(path).thumbnail(pixels, pixels))
 }
 
 pub fn ipc(arguments: &[String]) -> String {
