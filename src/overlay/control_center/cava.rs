@@ -2,7 +2,7 @@ use std::env;
 use std::thread;
 use std::time::Duration;
 
-use amane::Service;
+use amane::{Media, Service};
 
 use crate::overlay::Overlay;
 
@@ -12,7 +12,7 @@ pub const BARS: usize = 24;
 // cava's quiet levels look flat, so they are lifted before being cut off at full
 const GAIN: f32 = 1.75;
 
-// how often a closed panel is checked for opening
+// how often cava checks whether it should start
 const IDLE_CHECK: Duration = Duration::from_millis(200);
 
 // how long to wait before starting cava again after it quit on its own
@@ -25,8 +25,9 @@ pub struct Cava {
 }
 
 /*
- * cava only runs while the control center is open, since nothing else
- * shows it and every line it prints is a redraw
+ * cava stays warm while something plays, so opening the panel shows bars
+ * at once; levels are only stored while the panel is open, since every
+ * store is a redraw
  */
 impl Service for Cava {
     fn new() -> Self {
@@ -35,24 +36,26 @@ impl Service for Cava {
 
     fn listen() {
         loop {
-            while !open() {
+            while !wanted() {
                 thread::sleep(IDLE_CHECK);
             }
 
             let output = amane::lines(&format!("cava -p '{}'", config_path()));
 
-            // closing the panel drops the output, which stops cava
+            // dropping the output stops cava
             for line in output {
-                if !open() {
+                if !wanted() {
                     break;
                 }
 
-                Self::write().levels = parse(&line);
+                if open() {
+                    Self::write().levels = parse(&line);
+                }
             }
 
             Self::write().levels = [0.0; BARS];
 
-            if open() {
+            if wanted() {
                 thread::sleep(RESTART_DELAY);
             }
         }
@@ -67,6 +70,10 @@ impl Cava {
 
 fn open() -> bool {
     Overlay::read().control_center.shown
+}
+
+fn wanted() -> bool {
+    open() || Media::read().playing()
 }
 
 // a line reads like "12;40;100;...;" with levels from 0 to 100

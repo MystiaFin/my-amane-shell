@@ -21,6 +21,9 @@ use crate::fonts;
 use crate::profile::Profile;
 use crate::theme::{self, Theme};
 
+// what open_window and close_window know this window by
+const NAME: &str = "settings";
+
 const WIDTH: f32 = 980.0;
 const HEIGHT: f32 = 680.0;
 
@@ -388,7 +391,7 @@ fn key_pressed(key: Key) {
 fn close() {
     Settings::discard();
 
-    amane::close_window(view);
+    amane::close_window(NAME);
 }
 
 // opens the window, or does nothing while it is open
@@ -409,7 +412,7 @@ pub fn open() {
         shown.confirm = None;
     }
 
-    amane::open_window(view);
+    amane::open_window(NAME, view);
 }
 
 // opens the window on one page, like colors from the launcher's color command
