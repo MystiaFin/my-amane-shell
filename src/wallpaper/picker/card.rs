@@ -2,9 +2,13 @@ use amane::{Color, Image, Parent, Pointer, Rectangle, Service};
 
 use super::Picker;
 
-// thumbnails are kept this big, like quickshell's picker
-const THUMBNAIL_WIDTH: u32 = 720;
-const THUMBNAIL_HEIGHT: u32 = 480;
+/*
+ * thumbnails stay cached so the picker opens fast, all of them at once,
+ * so they are only as big as the largest card
+ */
+// ponytail: one screen pixel per card pixel, double it for a scaled screen
+const THUMBNAIL_WIDTH: u32 = super::CARD_WIDTH as u32;
+const THUMBNAIL_HEIGHT: u32 = super::CARD_HEIGHT as u32;
 
 const RADIUS: f32 = 16.0;
 
