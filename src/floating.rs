@@ -1,4 +1,5 @@
 mod card;
+mod memory;
 mod placement;
 mod sensors;
 mod weather;
@@ -72,18 +73,26 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
 
     drop(settings);
 
-    // the cards fade in and out, so the window stays until they are gone
-    let target = if wanted { 1.0 } else { 0.0 };
-
-    let shown = motion::follow(&format!("floating:{}", monitor.name), target, DEFAULT_SPATIAL);
-
     let mut cards = cards(&theme);
 
     let mut names: Vec<Name> = cards.iter().map(|(name, _)| *name).collect();
 
     names.push(Name::Clock);
 
-    let spots = spots(&theme, &names, width, height, scale);
+    // nothing shows until the cards know their spots, so they fade in where they stay
+    let Some(spots) = spots(&theme, &monitor.name, &names, width, height, scale) else {
+        return LayerWindow::new()
+            .width(Full)
+            .height(Full)
+            .layer(Layer::Bottom)
+            .namespace("floating-widgets")
+            .visible(false);
+    };
+
+    // the cards fade in and out, so the window stays until they are gone
+    let target = if wanted { 1.0 } else { 0.0 };
+
+    let shown = motion::appear(&format!("floating:{}", monitor.name), target, DEFAULT_SPATIAL);
 
     // the clock's text leans toward the screen edge it sits nearest, so it never floats off it
     let clock_center = spots[&Name::Clock].0 + CLOCK_WIDTH * scale / 2.0;
@@ -142,19 +151,29 @@ fn size(name: Name, scale: f32) -> (f32, f32) {
 
 /*
  * where every card goes on this screen: the calmest spots on the wallpaper,
- * or fixed corners until the wallpaper has been read, or when nothing fits
+ * the remembered ones until it has been read, fixed corners when it can't
+ * be or nothing fits, and none while there is nothing to go on yet
  */
 fn spots(
     theme: &Theme,
+    monitor: &str,
     names: &[Name],
     width: f32,
     height: f32,
     scale: f32,
-) -> HashMap<Name, (f32, f32)> {
+) -> Option<HashMap<Name, (f32, f32)>> {
     let placement = Placement::read();
 
     let Some(analysis) = placement.analysis() else {
-        return corners(names, width, height, scale);
+        if let Some(spots) = memory::recall(monitor, names) {
+            return Some(spots);
+        }
+
+        if placement.settled() {
+            return Some(corners(names, width, height, scale));
+        }
+
+        return None;
     };
 
     let sized = |group: &[Name]| -> Vec<(Name, f32, f32)> {
@@ -188,7 +207,11 @@ fn spots(
         crop: placement::crop(analysis, width, height),
     };
 
-    placement::arrange(&request).unwrap_or_else(|| corners(names, width, height, scale))
+    let spots = placement::arrange(&request).unwrap_or_else(|| corners(names, width, height, scale));
+
+    memory::remember(monitor, &spots);
+
+    Some(spots)
 }
 
 // readings top left, weather top right, the air bottom left and the clock bottom right

@@ -4,7 +4,7 @@ mod spring;
 
 use std::time::Duration;
 
-pub use follow::{fade, follow};
+pub use follow::{appear, fade, follow};
 pub use glide::Glide;
 pub use spring::Spring;
 

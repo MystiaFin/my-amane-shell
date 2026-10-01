@@ -65,6 +65,11 @@ impl Placement {
     pub fn analysis(&self) -> Option<&Analysis> {
         self.analysis.as_ref()
     }
+
+    // a wallpaper was tried, even if it could not be read
+    pub fn settled(&self) -> bool {
+        !self.path.is_empty()
+    }
 }
 
 /*

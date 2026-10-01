@@ -17,6 +17,11 @@ pub fn follow(name: &str, target: f32, milliseconds: u64) -> f32 {
     glide(name, target, |value| super::spatial(value, milliseconds))
 }
 
+// the same, but a new one starts from 0, so its first target is played in
+pub fn appear(name: &str, target: f32, milliseconds: u64) -> f32 {
+    glide(name, target, |_| super::spatial(0.0, milliseconds))
+}
+
 // the same for a color change, 0 for the first color and 1 for the second
 pub fn fade(name: &str, target: f32) -> f32 {
     glide(name, target, |value| super::effects(value, FAST_EFFECTS))
