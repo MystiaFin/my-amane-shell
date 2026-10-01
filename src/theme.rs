@@ -186,20 +186,51 @@ fn tone(color: Color, lightness: f32, min_saturation: f32, tuning: &Tuning) -> C
     })
 }
 
-// amount 0 gives first, 1 gives second
+/*
+ * amount 0 gives first, 1 gives second; each channel is weighted by its
+ * color's alpha, so mixing from transparent fades in instead of passing black
+ */
 pub fn mix(first: Color, second: Color, amount: f32) -> Color {
-    let blend = |from: u8, to: u8| {
-        let from = f32::from(from);
-        let to = f32::from(to);
+    let first_alpha = f32::from(first.alpha()) / 255.0;
+    let second_alpha = f32::from(second.alpha()) / 255.0;
 
-        (from + (to - from) * amount).round() as u8
+    let alpha = first_alpha + (second_alpha - first_alpha) * amount;
+
+    if alpha == 0.0 {
+        return Color::TRANSPARENT;
+    }
+
+    let blend = |from: u8, to: u8| {
+        let from = f32::from(from) * first_alpha;
+        let to = f32::from(to) * second_alpha;
+
+        ((from + (to - from) * amount) / alpha).round() as u8
     };
 
-    Color::rgb(
+    Color::rgba(
         blend(first.red(), second.red()),
         blend(first.green(), second.green()),
         blend(first.blue(), second.blue()),
+        (alpha * 255.0).round() as u8,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mix_fades_in_from_transparent() {
+        let border = Color::rgb(200, 100, 50);
+
+        assert_eq!(mix(Color::TRANSPARENT, border, 0.0).alpha(), 0);
+
+        let half = mix(Color::TRANSPARENT, border, 0.5);
+
+        assert_eq!((half.red(), half.green(), half.blue(), half.alpha()), (200, 100, 50, 128));
+
+        assert_eq!(mix(Color::BLACK, Color::WHITE, 0.5).red(), 128);
+    }
 }
 
 // relative luminance, to choose dark or light text on the accent
