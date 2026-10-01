@@ -12,6 +12,7 @@ use amane::{
 };
 
 use crate::bar;
+use crate::lock_screen::{self, Curtain};
 use crate::settings::Settings;
 use crate::theme;
 
@@ -34,6 +35,11 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
 
     let wallpaper = Wallpaper::read();
 
+    let curtain = Curtain::read();
+
+    // square once the screen mask fades for a lock, matching the lock screen
+    let radius = FRAME_RADIUS * curtain.items.value();
+
     let width = monitor.width as f32;
     let height = monitor.height as f32;
 
@@ -52,7 +58,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     let mut frame = Rectangle::new()
         .width(Parent)
         .height(Parent)
-        .radius(FRAME_RADIUS)
+        .radius(radius)
         .fill(Image::cover(&wallpaper.shown))
         .translate(0.0, below);
 
@@ -66,7 +72,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
             let picture = Rectangle::new()
                 .width(Parent)
                 .height(Parent)
-                .radius(FRAME_RADIUS)
+                .radius(radius)
                 .fill(Image::cover(incoming))
                 .opacity(progress);
 
@@ -82,7 +88,14 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .height(height - bar::reserved())
         .translate(0.0, bar::reserved_top())
         .radius(SCREEN_RADIUS)
-        .shadow(Shadow::inner(SHADOW).blur(SHADOW_BLUR));
+        .shadow(Shadow::inner(SHADOW).blur(SHADOW_BLUR))
+        .opacity(curtain.items.value());
+
+    let dim = Rectangle::new()
+        .width(Parent)
+        .height(Parent)
+        .fill(Color::rgba(0, 0, 0, lock_screen::DIM))
+        .opacity(curtain.dark.value());
 
     LayerWindow::new()
         .width(Full)
@@ -91,5 +104,5 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .space(Zone::Ignore)
         .namespace("wallpaper")
         .click_through()
-        .child(Stack::new(children![backdrop, frame, shadow]).width(Parent).height(Parent))
+        .child(Stack::new(children![backdrop, frame, shadow, dim]).width(Parent).height(Parent))
 }

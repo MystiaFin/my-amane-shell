@@ -1,7 +1,8 @@
 use std::process;
 
-use amane::{Argument, Bus, Lock, Service};
+use amane::{Argument, Bus, Service};
 
+use super::curtain;
 use super::password::Typing;
 
 const LOGIN1: &str = "org.freedesktop.login1";
@@ -40,9 +41,9 @@ impl Service for Logind {
     }
 }
 
-// every lock opens on the hint, not on the last lock's half typed state
+// every lock opens on the hint, not on the last lock's half typed state; blocks while the desktop fades
 pub fn start() {
     Typing::write().typing = false;
 
-    Lock::start();
+    curtain::close();
 }

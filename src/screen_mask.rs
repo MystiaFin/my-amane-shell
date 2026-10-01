@@ -1,5 +1,6 @@
-use amane::{Full, Layer, LayerWindow, Mask, Monitor, Parent, Rectangle, Zone};
+use amane::{Full, Layer, LayerWindow, Mask, Monitor, Parent, Rectangle, Service, Zone};
 
+use crate::lock_screen::Curtain;
 use crate::theme;
 use crate::wallpaper::SCREEN_RADIUS;
 
@@ -29,6 +30,7 @@ pub fn view(_monitor: &Monitor) -> LayerWindow {
                 .width(Parent)
                 .height(Parent)
                 .fill(theme.background)
+                .opacity(Curtain::read().items.value())
                 .child(hole),
         )
 }

@@ -15,10 +15,11 @@ use amane::{
 use crate::bar;
 use crate::clock::Clock;
 use crate::fonts;
+use crate::lock_screen::Curtain;
 use crate::motion::{self, DEFAULT_SPATIAL};
 use crate::settings::Settings;
 use crate::theme::{self, Theme};
-use crate::wallpaper;
+use crate::wallpaper::{self, Wallpaper};
 
 use card::Reading;
 use placement::{Name, Placement, Request};
@@ -90,8 +91,11 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
             .visible(false);
     };
 
+    // at startup the cards wait for the wallpaper to finish rising
+    let risen = Wallpaper::read().rise.value() >= 1.0;
+
     // the cards fade in and out, so the window stays until they are gone
-    let target = if wanted { 1.0 } else { 0.0 };
+    let target = if wanted && risen { 1.0 } else { 0.0 };
 
     let shown = motion::appear(&format!("floating:{}", monitor.name), target, DEFAULT_SPATIAL);
 
@@ -142,7 +146,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
             Rectangle::new()
                 .width(Parent)
                 .height(Parent)
-                .opacity(shown * opacity)
+                .opacity(shown * opacity * Curtain::read().items.value())
                 .child(Stack::new(layers).width(Parent).height(Parent)),
         )
 }

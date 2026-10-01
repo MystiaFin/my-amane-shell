@@ -9,12 +9,13 @@ mod state;
 pub mod utility;
 
 use amane::{
-    Color, Horizontal, InputArea, Key, Keyboard, Layer, LayerWindow, Margin, Monitor, Rectangle,
-    Service, Stack, Vertical, Zone, children,
+    Color, Horizontal, InputArea, Key, Keyboard, Layer, LayerWindow, Margin, Monitor, Parent,
+    Rectangle, Service, Stack, Vertical, Zone, children,
 };
 
 use crate::bar;
 use crate::liquid::{self, Blob, Placement};
+use crate::lock_screen::Curtain;
 use crate::theme;
 
 pub use region::Region;
@@ -131,7 +132,13 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         .keyboard(keyboard)
         .on_key(key_pressed)
         .input_region(areas)
-        .child(liquid::view(theme.background, blobs, placement))
+        .child(
+            Rectangle::new()
+                .width(Parent)
+                .height(Parent)
+                .opacity(Curtain::read().items.value())
+                .child(liquid::view(theme.background, blobs, placement)),
+        )
 }
 
 // only one panel is out at a time, so only one of these acts on the key

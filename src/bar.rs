@@ -12,6 +12,7 @@ use amane::{
     Zone, children,
 };
 
+use crate::lock_screen::Curtain;
 use crate::motion::{self as shell_motion, DEFAULT_SPATIAL};
 use crate::settings::Settings;
 use crate::theme;
@@ -125,6 +126,7 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
                 .width(Parent)
                 .height(Parent)
                 .fill(behind)
+                .opacity(Curtain::read().items.value())
                 .clip()
                 .on_hover(reveal::hover)
                 .child(Rectangle::new().width(Parent).height(height).translate(0.0, slide).child(bar)),

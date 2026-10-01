@@ -1,5 +1,8 @@
+mod curtain;
 mod logind;
 mod password;
+
+use std::thread;
 
 use amane::{
     Center, Color, Column, Image, LayerWindow, Lock, Monitor, Parent, Rectangle, Service, Stack,
@@ -11,6 +14,7 @@ use crate::fonts;
 use crate::motion::{self, DEFAULT_SPATIAL};
 use crate::wallpaper::Wallpaper;
 
+pub use curtain::Curtain;
 pub use logind::Logind;
 
 use password::Typing;
@@ -18,7 +22,7 @@ use password::Typing;
 const WHITE: Color = Color::rgb(0xf7, 0xf7, 0xf7);
 
 // the wallpaper is darkened this much, so white text reads on any picture
-const DIM: u8 = 122;
+pub const DIM: u8 = 122;
 
 const LOCK_ICON: &str = "󰌾";
 
@@ -113,7 +117,7 @@ fn unlock(width: f32, height: f32) -> Stack {
 
 // locks the session, the same as `loginctl lock-session`
 pub fn ipc(_arguments: &[String]) -> String {
-    logind::start();
+    thread::spawn(logind::start);
 
     String::from("ok")
 }

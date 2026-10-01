@@ -1,8 +1,11 @@
+use std::thread;
+
 use amane::{
     Center, Color, Column, Image, Lock, Padding, Rectangle, Service, Start, Text, TextInput,
     Weight, children,
 };
 
+use super::curtain;
 use crate::fonts;
 use crate::profile::Profile;
 use crate::theme;
@@ -129,6 +132,8 @@ fn submit(password: String) {
     }
 
     Lock::unlock(&password);
+
+    thread::spawn(curtain::open_when_accepted);
 
     TextInput::set_text(INPUT, "");
 }
