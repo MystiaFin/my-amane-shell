@@ -242,7 +242,10 @@ fn row(overlay: &Overlay, theme: &Theme, entry: &Entry, index: usize, width: f32
         amane::Color::TRANSPARENT
     };
 
-    let show_icon = Settings::read().flag("launcher_icons");
+    // a tmux session has no icon, so its name starts at the edge
+    let is_session = matches!(entry.kind, Kind::Tmux(_));
+
+    let show_icon = Settings::read().flag("launcher_icons") && !is_session;
 
     let name_width = if show_icon {
         width - 62.0 - 12.0
@@ -342,6 +345,11 @@ pub fn ipc(arguments: &[String]) -> String {
 
     match command {
         "show" => show(&mut overlay),
+        "showTmux" => {
+            show(&mut overlay);
+
+            search_tmux(&mut overlay);
+        }
         "hide" => overlay.launcher.hide(),
         _ if overlay.launcher.shown => overlay.launcher.hide(),
         _ => show(&mut overlay),
@@ -363,6 +371,16 @@ fn show(overlay: &mut Overlay) {
 
         TextInput::set_text(INPUT, "");
     }
+
+    reset_list(overlay);
+}
+
+// switches the search to tmux sessions, as if "!" was typed
+fn search_tmux(overlay: &mut Overlay) {
+    overlay.query = String::from("!");
+    overlay.sessions = results::read_sessions();
+
+    TextInput::set_text(INPUT, "!");
 
     reset_list(overlay);
 }
@@ -524,14 +542,7 @@ fn launch_selected() {
             crate::wallpaper::picker::ipc(&[String::from("show")]);
         }
 
-        Kind::TmuxCommand => {
-            overlay.query = String::from("!");
-            overlay.sessions = results::read_sessions();
-
-            TextInput::set_text(INPUT, "!");
-
-            reset_list(&mut overlay);
-        }
+        Kind::TmuxCommand => search_tmux(&mut overlay),
 
         Kind::Tmux(session) => {
             if results::attach(session) && close {
