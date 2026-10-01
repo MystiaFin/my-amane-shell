@@ -1,3 +1,4 @@
+mod blurred;
 pub mod picker;
 mod reveal;
 mod shuffle;
@@ -14,6 +15,7 @@ use crate::bar;
 use crate::settings::Settings;
 use crate::theme;
 
+pub use blurred::blurred;
 pub use shuffle::Shuffle;
 pub use state::{Wallpaper, choose};
 

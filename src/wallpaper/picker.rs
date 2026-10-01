@@ -2,7 +2,7 @@ mod card;
 mod state;
 
 use amane::{
-    Center, Color, Column, Full, Image, Key, Keyboard, Layer, LayerWindow, Monitor, Parent,
+    Center, Color, Column, Full, Key, Keyboard, Layer, LayerWindow, Monitor, Parent,
     Rectangle, Service, Stack, Text, Vertical, Widget, Zone, children,
 };
 
@@ -29,16 +29,6 @@ const MARGIN: f32 = 24.0;
 // how many cards fit along the carousel, and how far past each side it runs
 const VISIBLE_CARDS: f32 = 7.0;
 const OVERHANG: f32 = 0.12;
-
-/*
- * the band's wallpaper is kept this many times smaller, blurred once while
- * it decodes, and stretched back up; a real blur of the band each frame
- * took about 45 ms on the laptop's intel gpu
- */
-const BLUR_SHRINK: f32 = 12.0;
-
-// in the small copy's pixels, so about BLUR_SHRINK times wider on screen
-const BLUR_RADIUS: u32 = 2;
 
 const TINT: f32 = 0.48;
 
@@ -69,29 +59,12 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
     // as tall as the screen and moved up, so it lines up with the wallpaper around the band
     let top = (screen_height - height) / 2.0;
 
-    let settings = Settings::read();
-
-    let strength = settings.number("blur_strength");
-    let opaque = settings.flag("reduce_transparency");
-
-    drop(settings);
-
-    // a weaker blur keeps a bigger copy, none keeps it sharp
-    let shrink = 1.0 + (BLUR_SHRINK - 1.0) * strength;
-
-    let radius = if strength > 0.0 { BLUR_RADIUS } else { 0 };
-
-    let blurred_width = (screen_width / shrink) as u32;
-    let blurred_height = (screen_height / shrink) as u32;
-
-    let blurred = Image::cover(&Wallpaper::read().shown)
-        .thumbnail(blurred_width, blurred_height)
-        .blurred(radius);
+    let opaque = Settings::read().flag("reduce_transparency");
 
     let backdrop = Rectangle::new()
         .width(screen_width)
         .height(screen_height)
-        .fill(blurred)
+        .fill(super::blurred(screen_width, screen_height))
         .translate(0.0, -top);
 
     // an alpha in the color, since fading the rectangle would give it a canvas of its own

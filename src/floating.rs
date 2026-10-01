@@ -18,6 +18,7 @@ use crate::fonts;
 use crate::motion::{self, DEFAULT_SPATIAL};
 use crate::settings::Settings;
 use crate::theme::{self, Theme};
+use crate::wallpaper;
 
 use card::Reading;
 use placement::{Name, Placement, Request};
@@ -118,6 +119,14 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
         let x = motion::follow(&format!("{key}:x"), x, MOVE);
         let y = motion::follow(&format!("{key}:y"), y, MOVE);
 
+        // the clock floats without a card, so there is no glass behind it
+        if name != Name::Clock {
+            let left = x - card_width * (scale - 1.0) / 2.0;
+            let top = y - card_height * (scale - 1.0) / 2.0;
+
+            layers.push(Box::new(glass(monitor, left, top, name, scale)));
+        }
+
         layers.push(Box::new(card.scale(scale).translate(x, y)));
     }
 
@@ -136,6 +145,31 @@ pub fn view(monitor: &Monitor) -> LayerWindow {
                 .opacity(shown * opacity)
                 .child(Stack::new(layers).width(Parent).height(Parent)),
         )
+}
+
+/*
+ * the blurred wallpaper cut to a card's shape, lined up with the real one;
+ * the window starts below a top bar, so the wallpaper is moved up by it
+ */
+fn glass(monitor: &Monitor, left: f32, top: f32, name: Name, scale: f32) -> Rectangle {
+    let (width, height) = size(name, scale);
+
+    let screen_width = monitor.width as f32;
+    let screen_height = monitor.height as f32;
+
+    let wallpaper = Rectangle::new()
+        .width(screen_width)
+        .height(screen_height)
+        .fill(wallpaper::blurred(screen_width, screen_height))
+        .translate(-left, -top - bar::reserved_top());
+
+    Rectangle::new()
+        .width(width)
+        .height(height)
+        .radius(card::RADIUS * scale)
+        .clip()
+        .child(wallpaper)
+        .translate(left, top)
 }
 
 // the room a card takes at the given scale
