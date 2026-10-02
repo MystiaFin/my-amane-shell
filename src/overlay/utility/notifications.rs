@@ -353,10 +353,10 @@ fn icon(theme: &Theme, notification: &Notification, style: &CardStyle) -> Rectan
 fn icon_path(notification: &Notification) -> Option<PathBuf> {
     let path = find_icon(notification)?;
 
-    // themes also hold svg icons, which amane can't draw, so the bell stands in
+    // other formats, like xpm in old themes, get the bell
     let extension = path.extension()?.to_str()?.to_lowercase();
 
-    if ["png", "jpg", "jpeg"].contains(&extension.as_str()) {
+    if ["png", "jpg", "jpeg", "svg"].contains(&extension.as_str()) {
         Some(path)
     } else {
         None
@@ -364,19 +364,20 @@ fn icon_path(notification: &Notification) -> Option<PathBuf> {
 }
 
 /*
+ * the notification's own image, like a sender's avatar, comes first;
  * the icon is a file path, a file url, or a name from the icon theme; a
  * name is looked up through the installed apps, and with no icon at all
  * the app sending it may still have one
  */
 fn find_icon(notification: &Notification) -> Option<PathBuf> {
-    let icon = notification.icon();
-
-    if let Some(url) = icon.strip_prefix("file://") {
-        return Some(PathBuf::from(decode_url(url)));
+    if let Some(path) = file_path(notification.image()) {
+        return Some(path);
     }
 
-    if icon.starts_with('/') {
-        return Some(PathBuf::from(icon));
+    let icon = notification.icon();
+
+    if let Some(path) = file_path(icon) {
+        return Some(path);
     }
 
     let apps = Apps::read();
@@ -389,6 +390,19 @@ fn find_icon(notification: &Notification) -> Option<PathBuf> {
         if same_icon || same_app {
             return app.icon_path().map(PathBuf::from);
         }
+    }
+
+    None
+}
+
+// none for an icon name or an empty string
+fn file_path(text: &str) -> Option<PathBuf> {
+    if let Some(url) = text.strip_prefix("file://") {
+        return Some(PathBuf::from(decode_url(url)));
+    }
+
+    if text.starts_with('/') {
+        return Some(PathBuf::from(text));
     }
 
     None
